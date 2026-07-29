@@ -84,7 +84,6 @@ export function CustomizationPage() {
 
   const saveStructured = async () => {
     if (!draft) return
-    if (!window.confirm("确认保存这些配置？系统会备份旧版本，重启后端后生效。")) return
     setSaving(true)
     try {
       const saved = await api.put<ConfigFileView>("/config/customization/admin/structured", draft)
@@ -145,15 +144,21 @@ export function CustomizationPage() {
         title="接入定制"
         subtitle={`${draft.profile.name} · ${draft.profile.targetTeam || "未指定团队"}`}
         actions={
-          <>
-            <Button variant="outline" onClick={load} disabled={formChanged || yamlChanged}>
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void saveStructured()
+            }}
+          >
+            <Button type="button" variant="outline" onClick={() => void load()} disabled={formChanged || yamlChanged}>
               <RefreshCw className="size-4" /> 重新读取
             </Button>
-            <Button onClick={saveStructured} disabled={!formChanged || saving}>
+            <Button type="submit" disabled={!formChanged || saving}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               保存更改
             </Button>
-          </>
+          </form>
         }
       />
       <PageBody className="bg-muted/20">
