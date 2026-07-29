@@ -1,4 +1,4 @@
-import type { IssueStatus, Priority } from "./types"
+import type { DtsCustomization, IssueStatus, Priority } from "./types"
 
 export const STATUS_META: Record<IssueStatus, { label: string; className: string; dot: string }> = {
   PENDING_ASSIGN: { label: "待分配", className: "bg-secondary text-secondary-foreground", dot: "#a1a1a1" },
@@ -45,6 +45,18 @@ export const ROLE_LABEL: Record<string, string> = {
   DEVELOPER: "开发人员",
   LEADER: "项目负责人",
   ADMIN: "管理员",
+}
+
+export function applyCustomizationLabels(config: DtsCustomization) {
+  for (const status of config.issue.statuses) {
+    const current = STATUS_META[status.value]
+    if (current) current.label = status.label
+  }
+  for (const priority of config.issue.priorities) {
+    const current = PRIORITY_META[priority.value]
+    if (current) current.label = priority.label
+  }
+  for (const role of config.roles) ROLE_LABEL[role.value] = role.label
 }
 
 export function statusLabel(s: string) {

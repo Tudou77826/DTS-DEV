@@ -19,6 +19,7 @@ public class IssueVo {
     private Long moduleId;
     private String moduleName;
 
+    private String title;
     private String description;
     private String searchKeywords;
     private String envInfo;

@@ -13,31 +13,28 @@ import {
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import type { Dictionaries, Issue, IssueStatus } from "@/lib/types"
+import { useCustomization } from "@/store/customization"
 import { STATUS_META, PRIORITY_META } from "@/lib/labels"
-
-const NEXT_STATUS_FLOW: Record<string, IssueStatus[]> = {
-  PENDING_ASSIGN: ["PENDING_LOCATE", "NEED_INFO"],
-  PENDING_LOCATE: ["LOCATING", "NEED_INFO"],
-  LOCATING: ["PENDING_VERIFY", "NEED_INFO", "CANNOT_REPRODUCE", "WONT_FIX", "DEFERRED"],
-  PENDING_VERIFY: ["RESOLVED", "LOCATING"],
-  RESOLVED: ["CLOSED", "REOPENED"],
-  CLOSED: ["REOPENED"],
-  NEED_INFO: ["PENDING_LOCATE", "LOCATING"],
-  DEFERRED: ["LOCATING"],
-  CANNOT_REPRODUCE: ["LOCATING", "CLOSED"],
-  WONT_FIX: ["CLOSED"],
-  REOPENED: ["LOCATING"],
-}
+import { useAuth } from "@/store/auth"
 
 export function IssueActions({ issue, onChanged }: { issue: Issue; onChanged: () => void }) {
   const [dict, setDict] = useState<Dictionaries | null>(null)
+  const user = useAuth((state) => state.user)
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
 
-  const nextStatuses = NEXT_STATUS_FLOW[issue.status] || []
+  const isAdmin = user?.role === "ADMIN"
+  const customization = useCustomization((state) => state.value)
+  const canAssign = user?.role === "LEADER" || isAdmin
+  const nextStatuses = (customization?.issue.transitions[issue.status] || []).filter((status) => {
+    if (status === "CLOSED" || status === "REOPENED") {
+      return isAdmin || user?.id === issue.submitterId
+    }
+    return isAdmin || user?.id === issue.assigneeId
+  })
 
   return (
     <div className="flex items-center gap-2">
-      <AssignDialog issue={issue} dict={dict} onChanged={onChanged} />
+      {canAssign && <AssignDialog issue={issue} dict={dict} onChanged={onChanged} />}
 
       {nextStatuses.length > 0 && (
         <StatusDialog issue={issue} nextStatuses={nextStatuses} onChanged={onChanged} />
@@ -122,6 +119,13 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
   const [status, setStatus] = useState("")
   const [remark, setRemark] = useState("")
   const [saving, setSaving] = useState(false)
+  const requirement = status === "PENDING_VERIFY" && !issue.rootCause
+    ? "进入待验证前，请先在处理记录中填写“根本原因”。"
+    : status === "RESOLVED" && (!issue.rootCause || !issue.resolution)
+      ? "解决前必须填写“根本原因”和“处理结论”。"
+      : ["NEED_INFO", "DEFERRED", "CANNOT_REPRODUCE", "WONT_FIX", "REOPENED"].includes(status) && !remark.trim()
+        ? "该状态必须填写流转说明。"
+        : ""
 
   const submit = async () => {
     if (!status) return toast.error("请选择状态")
@@ -164,10 +168,15 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
             <Label>进展说明（可选）</Label>
             <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="补充说明本次状态变更" />
           </div>
+          {requirement && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              {requirement}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">取消</Button></DialogClose>
-          <Button onClick={submit} disabled={saving}>{saving && "处理中…"}确认流转</Button>
+          <Button onClick={submit} disabled={saving || Boolean(requirement)}>{saving && "处理中…"}确认流转</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

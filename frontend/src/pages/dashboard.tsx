@@ -148,7 +148,7 @@ export function DashboardPage() {
                   className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-accent/50"
                 >
                   <span className="font-mono text-xs text-muted-foreground">{issue.code}</span>
-                  <span className="flex-1 truncate text-sm">{issue.description}</span>
+                  <span className="flex-1 truncate text-sm">{issue.title}</span>
                   <StatusBadge status={issue.status} />
                   <span className="hidden text-xs text-muted-foreground sm:inline">
                     {formatDateTime(issue.createdAt)}

@@ -1,12 +1,13 @@
 package com.dts.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.dts.common.BusinessException;
 import com.dts.domain.Issue;
 import com.dts.domain.IssueStatus;
 import com.dts.domain.VersionInvestigation;
 import com.dts.dto.InvestigationDtos;
-import com.dts.repository.IssueRepository;
-import com.dts.repository.VersionInvestigationRepository;
+import com.dts.mapper.IssueMapper;
+import com.dts.mapper.VersionInvestigationMapper;
 import com.dts.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,23 +25,27 @@ public class InvestigationService {
     private static final Set<String> STATUSES = Set.of(
             "PENDING", "INVESTIGATING", "HAS_ISSUE", "NO_ISSUE", "FIXED", "UNCONFIRMED");
 
-    private final VersionInvestigationRepository investigationRepository;
-    private final IssueRepository issueRepository;
+    private final VersionInvestigationMapper investigationMapper;
+    private final IssueMapper issueMapper;
 
     @Transactional(readOnly = true)
     public List<VersionInvestigation> listByIssue(Long issueId) {
-        return investigationRepository.findByIssueId(issueId);
+        return investigationMapper.selectList(Wrappers.<VersionInvestigation>lambdaQuery()
+                .eq(VersionInvestigation::getIssueId, issueId)
+                .orderByAsc(VersionInvestigation::getCreatedAt));
     }
 
     @Transactional(readOnly = true)
     public List<VersionInvestigation> listByVersion(Long versionId) {
-        return investigationRepository.findByVersionId(versionId);
+        return investigationMapper.selectList(Wrappers.<VersionInvestigation>lambdaQuery()
+                .eq(VersionInvestigation::getVersionId, versionId)
+                .orderByAsc(VersionInvestigation::getCreatedAt));
     }
 
     @Transactional
     public VersionInvestigation create(InvestigationDtos.InvestigationSaveRequest req) {
         validateStatus(req.getStatus());
-        if (!issueRepository.existsById(req.getIssueId())) {
+        if (issueMapper.selectById(req.getIssueId()) == null) {
             throw new BusinessException("问题不存在: " + req.getIssueId());
         }
         VersionInvestigation v = VersionInvestigation.builder()
@@ -54,14 +59,17 @@ public class InvestigationService {
                 .verifyResult(req.getVerifyResult())
                 .completedAt(isTerminal(req.getStatus()) ? LocalDateTime.now() : null)
                 .build();
-        return investigationRepository.save(v);
+        investigationMapper.insert(v);
+        return v;
     }
 
     @Transactional
     public VersionInvestigation update(Long id, InvestigationDtos.InvestigationSaveRequest req) {
         validateStatus(req.getStatus());
-        VersionInvestigation v = investigationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("排查记录不存在: " + id));
+        VersionInvestigation v = investigationMapper.selectById(id);
+        if (v == null) {
+            throw new BusinessException("排查记录不存在: " + id);
+        }
         v.setVersionId(req.getVersionId());
         if (req.getInvestigatorId() != null) v.setInvestigatorId(req.getInvestigatorId());
         v.setStatus(req.getStatus());
@@ -72,7 +80,8 @@ public class InvestigationService {
         if (isTerminal(req.getStatus()) && v.getCompletedAt() == null) {
             v.setCompletedAt(LocalDateTime.now());
         }
-        return investigationRepository.save(v);
+        investigationMapper.updateById(v);
+        return v;
     }
 
     /**
@@ -82,15 +91,16 @@ public class InvestigationService {
     public InvestigationDtos.GenerateResult generateForVersion(InvestigationDtos.GenerateInvestigationRequest req) {
         List<Issue> issues;
         if (req.getIssueIds() != null && !req.getIssueIds().isEmpty()) {
-            issues = issueRepository.findAllById(req.getIssueIds());
+            issues = issueMapper.selectByIds(req.getIssueIds());
         } else {
-            issues = issueRepository.findAll().stream()
-                    .filter(i -> !IssueStatus.TERMINAL.contains(i.getStatus()))
-                    .toList();
+            issues = issueMapper.selectList(Wrappers.<Issue>lambdaQuery()
+                    .notIn(Issue::getStatus, IssueStatus.TERMINAL));
         }
         // 已存在的 (issueId, versionId) 不重复创建
-        Set<String> existing = investigationRepository.findByIssueIdIn(
-                        issues.stream().map(Issue::getId).toList()).stream()
+        List<Long> issueIds = issues.stream().map(Issue::getId).toList();
+        Set<String> existing = (issueIds.isEmpty() ? List.<VersionInvestigation>of()
+                : investigationMapper.selectList(Wrappers.<VersionInvestigation>lambdaQuery()
+                        .in(VersionInvestigation::getIssueId, issueIds))).stream()
                 .map(v -> v.getIssueId() + ":" + v.getVersionId())
                 .collect(Collectors.toSet());
 
@@ -108,7 +118,7 @@ public class InvestigationService {
                             ? req.getDefaultInvestigatorId() : issue.getAssigneeId())
                     .status("PENDING")
                     .build();
-            investigationRepository.save(v);
+            investigationMapper.insert(v);
             created++;
         }
         InvestigationDtos.GenerateResult result = new InvestigationDtos.GenerateResult();

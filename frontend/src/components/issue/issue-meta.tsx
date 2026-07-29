@@ -7,7 +7,10 @@ export function IssueMeta({ issue }: { issue: Issue }) {
     <Card>
       <CardContent className="space-y-4 p-5 text-sm">
         <Section title="问题描述">
-          <p className="whitespace-pre-wrap">{issue.description}</p>
+          <div
+            className="rich-content text-sm"
+            dangerouslySetInnerHTML={{ __html: issue.description }}
+          />
         </Section>
         {issue.searchKeywords && (
           <Section title="查询关键字">

@@ -1,4 +1,9 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
   datasource:
     url: jdbc:sqlite:./dts-dev.db
     driver-class-name: org.sqlite.JDBC
@@ -6,24 +11,23 @@ spring:
     password: ""
     hikari:
       maximum-pool-size: 1   # SQLite 写并发受限
-  jpa:
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        format_sql: true
-  sql:
-    init:
-      mode: always
+  # SQLite 用 Flyway 的通用脚本（建表），关闭 MySQL 专用迁移
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration-sqlite
 
-# 关闭 Redis 强依赖（本地验证无需）
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
 
 logging:
   level:
     com.dts: DEBUG
-    org.hibernate.SQL: WARN
+
+app:
+  storage:
+    root: ./target/uploads-sqlite

@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import type { User } from "@/lib/types"
 
 interface LoginResponse {
@@ -34,14 +34,21 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   hydrate: () => {
+    if (useAuth.getState().loading) return
     const token = localStorage.getItem("dts-token")
     if (!token) {
       set({ user: null })
       return
     }
-    api.get<User>("/auth/me").then((user) => set({ user })).catch(() => {
-      localStorage.removeItem("dts-token")
-      set({ user: null, token: null })
+    set({ loading: true })
+    api.get<User>("/auth/me").then((user) => set({ user, loading: false })).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        localStorage.removeItem("dts-token")
+        set({ user: null, token: null, loading: false })
+      } else {
+        set({ loading: false })
+        window.setTimeout(() => useAuth.getState().hydrate(), 1500)
+      }
     })
   },
 }))

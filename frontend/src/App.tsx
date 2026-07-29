@@ -12,6 +12,8 @@ import { MyTasksPage } from "@/pages/my-tasks"
 import { InvestigationPage } from "@/pages/investigation"
 import { StatsPage } from "@/pages/stats"
 import { ConfigPage } from "@/pages/config"
+import { CustomizationPage } from "@/pages/customization"
+import { useCustomization } from "@/store/customization"
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuth()
@@ -31,6 +33,8 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const loadCustomization = useCustomization((state) => state.load)
+  useEffect(() => { void loadCustomization() }, [loadCustomization])
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -43,6 +47,7 @@ export default function App() {
       <Route path="/investigations" element={<Protected><InvestigationPage /></Protected>} />
       <Route path="/stats" element={<Protected><StatsPage /></Protected>} />
       <Route path="/config" element={<Protected><ConfigPage /></Protected>} />
+      <Route path="/customization" element={<Protected><CustomizationPage /></Protected>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

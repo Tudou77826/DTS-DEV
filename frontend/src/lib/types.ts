@@ -40,6 +40,81 @@ export interface Dictionaries {
   modules: ProductModule[]
   versions: ProductVersion[]
   domains: IssueDomain[]
+  customization: DtsCustomization
+}
+
+export interface IssueFormFieldConfig {
+  label: string
+  placeholder?: string
+  required: boolean
+  visible: boolean
+}
+
+export interface DtsCustomization {
+  profile: {
+    id: string
+    name: string
+    targetTeam?: string
+    targetSystem?: string
+  }
+  branding: {
+    productName: string
+    shortName: string
+    loginTitle: string
+    loginSubtitle: string
+    primaryColor: string
+    showDemoAccounts: boolean
+    demoAccountHint: string
+  }
+  terminology: {
+    issue: string
+    product: string
+    module: string
+    version: string
+    domain: string
+    submitter: string
+    assignee: string
+  }
+  roles: Array<{ value: string; label: string; color?: string }>
+  issue: {
+    code: { prefix: string; datePattern: string; sequenceDigits: number }
+    defaultPriority: Priority
+    priorities: Array<{ value: Priority; label: string; color?: string }>
+    statuses: Array<{ value: IssueStatus; label: string; color?: string }>
+    fields: Record<
+      "title" | "description" | "searchKeywords" | "module" | "product" | "domain" |
+      "foundVersion" | "priority" | "vpnInfo" | "envInfo",
+      IssueFormFieldConfig
+    >
+    transitions: Partial<Record<IssueStatus, IssueStatus[]>>
+  }
+  masterData: {
+    syncMode: string
+    teams: Array<{
+      key: string
+      name: string
+      description?: string
+    }>
+    users: Array<{
+      employeeNo: string
+      username: string
+      displayName: string
+      role: string
+      team?: string
+      avatarColor?: string
+      active: boolean
+    }>
+    products: Array<{
+      key: string
+      name: string
+      description?: string
+      modules: string[]
+      versions: string[]
+    }>
+    domains: Array<{ name: string; description?: string }>
+  }
+  features: Record<string, boolean>
+  extensions: Record<string, unknown>
 }
 
 // ─── 问题 ───────────────────────────────────────
@@ -58,6 +133,7 @@ export interface Issue {
   updatedAt: string
   moduleId?: number
   moduleName?: string
+  title: string
   description: string
   searchKeywords?: string
   envInfo?: string
@@ -132,4 +208,45 @@ export interface VersionInvestigation {
   verifyResult?: string
   completedAt?: string
   createdAt: string
+}
+
+export interface IssueAttachment {
+  id: number
+  issueId: number
+  uploaderId: number
+  uploaderName?: string
+  sourceType: "ISSUE" | "COMMENT"
+  sourceId?: number
+  originalName: string
+  contentType?: string
+  fileSize: number
+  createdAt: string
+}
+
+export interface IssueRelation {
+  id: number
+  issueId: number
+  issueCode: string
+  title: string
+  description: string
+  relationType: "RELATED" | "DUPLICATE"
+  createdBy: number
+  createdAt: string
+}
+
+export interface Notification {
+  id: number
+  userId: number
+  type: string
+  title: string
+  content?: string
+  link?: string
+  readAt?: string
+  createdAt: string
+}
+
+export interface BatchResult {
+  succeeded: number
+  failed: number
+  errors: string[]
 }

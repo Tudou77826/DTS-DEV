@@ -15,6 +15,8 @@ public class IssueDtos {
         private Long id;
         @NotNull(message = "所属模块不能为空")
         private Long moduleId;
+        @NotBlank(message = "问题标题不能为空")
+        private String title;
         @NotBlank(message = "问题描述不能为空")
         private String description;
         private String searchKeywords;
@@ -24,8 +26,8 @@ public class IssueDtos {
         private Long productId;
         private String submitterNo;
         private Long foundVersionId;
-        /** 优先级 LOW/MEDIUM/HIGH/URGENT，默认 MEDIUM */
-        private String priority = "MEDIUM";
+        /** 优先级技术值；为空时使用当前接入配置的默认优先级。 */
+        private String priority;
     }
 
     /** 查询条件 */

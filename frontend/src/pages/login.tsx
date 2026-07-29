@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { toast } from "sonner"
+import { useCustomization } from "@/store/customization"
 
 export function LoginPage() {
   const { login, token } = useAuth()
@@ -14,6 +15,10 @@ export function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const customization = useCustomization((state) => state.value)
+  const demoAccounts = customization?.masterData.users
+    .filter((account) => account.active)
+    .map((account) => account.username) || []
 
   if (token) return <Navigate to="/dashboard" replace />
 
@@ -38,12 +43,14 @@ export function LoginPage() {
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <ClipboardList className="size-5" />
           </div>
-          <span className="text-xl font-semibold tracking-tight">问题管理平台</span>
+          <span className="text-xl font-semibold tracking-tight">
+            {customization?.branding.productName || "DTS"}
+          </span>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">登录</CardTitle>
-            <CardDescription>使用账号密码登录系统</CardDescription>
+            <CardTitle className="text-base">{customization?.branding.loginTitle || "登录"}</CardTitle>
+            <CardDescription>{customization?.branding.loginSubtitle || ""}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -74,10 +81,10 @@ export function LoginPage() {
                 登录
               </Button>
             </form>
-            <div className="mt-4 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-              <div className="mb-1 font-medium text-foreground">演示账号（密码均为 123456）：</div>
-              admin · leader · wangwu · zhaoliu · sunqi · submitter
-            </div>
+            {customization?.branding.showDemoAccounts && <div className="mt-4 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+              <div className="mb-1 font-medium text-foreground">{customization.branding.demoAccountHint || "演示账号"}：</div>
+              {demoAccounts.length > 0 ? demoAccounts.join(" · ") : "未配置演示账号"}
+            </div>}
           </CardContent>
         </Card>
       </div>

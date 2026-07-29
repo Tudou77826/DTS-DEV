@@ -13,6 +13,7 @@ backend/HELP.md
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/*.tsbuildinfo
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -25,6 +26,7 @@ pnpm-debug.log*
 
 # 本地验证用 SQLite 数据库（sqlite profile 生成）
 *.db
+backend/config/*.bak-*
 
 # OS
 .DS_Store

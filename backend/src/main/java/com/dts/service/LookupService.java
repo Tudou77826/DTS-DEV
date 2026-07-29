@@ -1,7 +1,8 @@
 package com.dts.service;
 
+import com.dts.common.BusinessException;
 import com.dts.domain.*;
-import com.dts.repository.*;
+import com.dts.mapper.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,59 +16,71 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LookupService {
 
-    private final UserRepository userRepository;
-    private final ProductRepository productRepository;
-    private final ModuleRepository moduleRepository;
-    private final ProductVersionRepository versionRepository;
-    private final IssueDomainRepository domainRepository;
-    private final TeamRepository teamRepository;
+    private final UserMapper userMapper;
+    private final ProductMapper productMapper;
+    private final ModuleMapper moduleMapper;
+    private final ProductVersionMapper versionMapper;
+    private final IssueDomainMapper domainMapper;
 
     public Map<Long, String> userNames(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) return Map.of();
-        return userRepository.findAllById(ids).stream()
+        return userMapper.selectByIds(ids).stream()
                 .collect(Collectors.toMap(User::getId, User::getDisplayName));
     }
 
     public String userName(Long id) {
         if (id == null) return null;
-        return userRepository.findById(id).map(User::getDisplayName).orElse(null);
+        User user = userMapper.selectById(id);
+        return user == null ? null : user.getDisplayName();
+    }
+
+    public User requireAssignableUser(Long id) {
+        User user = id == null ? null : userMapper.selectById(id);
+        if (user == null || !Boolean.TRUE.equals(user.getActive()) || !"DEVELOPER".equals(user.getRole())) {
+            throw new BusinessException("责任人必须是启用的开发人员");
+        }
+        return user;
     }
 
     public Map<Long, String> versionNames(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) return Map.of();
-        return versionRepository.findAllById(ids).stream()
+        return versionMapper.selectByIds(ids).stream()
                 .collect(Collectors.toMap(ProductVersion::getId, ProductVersion::getVersion));
     }
 
     public String versionName(Long id) {
         if (id == null) return null;
-        return versionRepository.findById(id).map(ProductVersion::getVersion).orElse(null);
+        ProductVersion version = versionMapper.selectById(id);
+        return version == null ? null : version.getVersion();
     }
 
     public Map<Long, String> productNames(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) return Map.of();
-        return productRepository.findAllById(ids).stream()
+        return productMapper.selectByIds(ids).stream()
                 .collect(Collectors.toMap(Product::getId, Product::getName));
     }
 
     public String productName(Long id) {
         if (id == null) return null;
-        return productRepository.findById(id).map(Product::getName).orElse(null);
+        Product product = productMapper.selectById(id);
+        return product == null ? null : product.getName();
     }
 
     public Map<Long, String> moduleNames(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) return Map.of();
-        return moduleRepository.findAllById(ids).stream()
+        return moduleMapper.selectByIds(ids).stream()
                 .collect(Collectors.toMap(ProductModule::getId, ProductModule::getName));
     }
 
     public String moduleName(Long id) {
         if (id == null) return null;
-        return moduleRepository.findById(id).map(ProductModule::getName).orElse(null);
+        ProductModule module = moduleMapper.selectById(id);
+        return module == null ? null : module.getName();
     }
 
     public String domainName(Long id) {
         if (id == null) return null;
-        return domainRepository.findById(id).map(IssueDomain::getName).orElse(null);
+        IssueDomain domain = domainMapper.selectById(id);
+        return domain == null ? null : domain.getName();
     }
 }

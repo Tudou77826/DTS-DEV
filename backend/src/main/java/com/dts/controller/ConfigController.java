@@ -2,8 +2,14 @@ package com.dts.controller;
 
 import com.dts.common.ApiResponse;
 import com.dts.domain.*;
+import com.dts.config.DtsCustomizationProperties;
 import com.dts.service.ConfigService;
+import com.dts.service.CustomizationAdminService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +21,47 @@ import java.util.Map;
 public class ConfigController {
 
     private final ConfigService configService;
+    private final DtsCustomizationProperties customization;
+    private final CustomizationAdminService customizationAdminService;
+
+    /** 登录前也可读取的系统级接入定制配置。 */
+    @GetMapping("/customization")
+    public ApiResponse<DtsCustomizationProperties> customization() {
+        return ApiResponse.ok(customization);
+    }
+
+    @GetMapping("/customization/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<CustomizationAdminService.ConfigFileView> customizationFile() {
+        return ApiResponse.ok(customizationAdminService.read());
+    }
+
+    @GetMapping("/customization/admin/structured")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<CustomizationAdminService.StructuredConfigView> structuredCustomization() {
+        return ApiResponse.ok(customizationAdminService.readStructured());
+    }
+
+    @PostMapping("/customization/admin/validate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<CustomizationAdminService.ValidationResult> validateCustomization(
+            @Valid @RequestBody CustomizationContentRequest request) {
+        return ApiResponse.ok(customizationAdminService.validate(request.getContent()));
+    }
+
+    @PutMapping("/customization/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<CustomizationAdminService.ConfigFileView> saveCustomization(
+            @Valid @RequestBody CustomizationContentRequest request) {
+        return ApiResponse.ok(customizationAdminService.save(request.getContent()));
+    }
+
+    @PutMapping("/customization/admin/structured")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<CustomizationAdminService.ConfigFileView> saveStructuredCustomization(
+            @RequestBody DtsCustomizationProperties request) {
+        return ApiResponse.ok(customizationAdminService.saveStructured(request));
+    }
 
     /** 一次性获取所有筛选用字典 */
     @GetMapping("/dictionaries")
@@ -110,5 +157,11 @@ public class ConfigController {
     public ApiResponse<Void> deleteTeam(@PathVariable Long id) {
         configService.deleteTeam(id);
         return ApiResponse.ok();
+    }
+
+    @Data
+    public static class CustomizationContentRequest {
+        @NotBlank(message = "配置内容不能为空")
+        private String content;
     }
 }

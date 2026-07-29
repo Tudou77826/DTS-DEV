@@ -75,7 +75,7 @@ export function MyTasksPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-0.5 truncate text-sm font-medium">{issue.description}</p>
+                      <p className="mt-0.5 truncate text-sm font-medium">{issue.title}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {issue.moduleName} · {formatDateTime(issue.createdAt)}
                       </p>

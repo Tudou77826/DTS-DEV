@@ -1,17 +1,25 @@
 package com.dts.controller;
 
+import com.alibaba.excel.EasyExcel;
 import com.dts.common.ApiResponse;
 import com.dts.common.PageResult;
 import com.dts.domain.Comment;
 import com.dts.domain.IssueProgress;
 import com.dts.domain.OperationLog;
+import com.dts.dto.FeatureDtos;
 import com.dts.dto.IssueDtos;
+import com.dts.dto.IssueExportRow;
 import com.dts.dto.IssueVo;
 import com.dts.service.IssueService;
+import com.dts.service.FeatureGuard;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -21,10 +29,38 @@ import java.util.Map;
 public class IssueController {
 
     private final IssueService issueService;
+    private final FeatureGuard featureGuard;
 
     @GetMapping
     public ApiResponse<PageResult<IssueVo>> page(IssueDtos.IssueQuery query) {
         return ApiResponse.ok(issueService.page(query));
+    }
+
+    @GetMapping("/export")
+    public void export(IssueDtos.IssueQuery query, HttpServletResponse response) throws IOException {
+        featureGuard.requireEnabled("excel-export", "Excel 导出");
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        String fileName = URLEncoder.encode("问题列表", StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + fileName + ".xlsx");
+        EasyExcel.write(response.getOutputStream(), IssueExportRow.class)
+                .autoCloseStream(false)
+                .sheet("问题列表")
+                .doWrite(issueService.exportRows(query));
+    }
+
+    @PostMapping("/batch/assign")
+    public ApiResponse<FeatureDtos.BatchResult> batchAssign(
+            @Valid @RequestBody FeatureDtos.BatchAssignRequest request) {
+        featureGuard.requireEnabled("batch-operations", "批量操作");
+        return ApiResponse.ok(issueService.batchAssign(request));
+    }
+
+    @PostMapping("/batch/close")
+    public ApiResponse<FeatureDtos.BatchResult> batchClose(
+            @Valid @RequestBody FeatureDtos.BatchCloseRequest request) {
+        featureGuard.requireEnabled("batch-operations", "批量操作");
+        return ApiResponse.ok(issueService.batchClose(request));
     }
 
     @GetMapping("/{id}")

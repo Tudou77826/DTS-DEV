@@ -8,14 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/rich-text-editor"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import type { Dictionaries, Issue, Priority } from "@/lib/types"
-
-const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"]
-const PRIORITY_LABEL: Record<Priority, string> = { LOW: "低", MEDIUM: "中", HIGH: "高", URGENT: "紧急" }
+import type { Dictionaries, Issue, IssueFormFieldConfig, Priority } from "@/lib/types"
+import { htmlToText } from "@/lib/utils"
 
 export function IssueNewPage() {
   const navigate = useNavigate()
@@ -23,6 +22,7 @@ export function IssueNewPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     moduleId: "",
+    title: "",
     description: "",
     searchKeywords: "",
     envInfo: "",
@@ -30,20 +30,31 @@ export function IssueNewPage() {
     domainId: "",
     productId: "",
     foundVersionId: "",
-    priority: "MEDIUM" as Priority,
+    priority: "" as Priority,
   })
 
-  useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
+  useEffect(() => {
+    api.get<Dictionaries>("/config/dictionaries").then((value) => {
+      setDict(value)
+      setForm((previous) => ({ ...previous, priority: value.customization.issue.defaultPriority }))
+    })
+  }, [])
 
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }))
+  const field = (key: keyof Dictionaries["customization"]["issue"]["fields"]) =>
+    dict?.customization.issue.fields[key]
+  const issueTerm = dict?.customization.terminology.issue || "事项"
 
   const submit = async () => {
     if (!form.moduleId) return toast.error("请选择所属模块")
-    if (!form.description.trim()) return toast.error("请填写问题描述")
+    if (!form.title.trim()) return toast.error("请填写问题标题")
+    if (form.title.trim().length > 255) return toast.error("问题标题不能超过255个字符")
+    if (!htmlToText(form.description)) return toast.error("请填写问题描述")
     setSaving(true)
     try {
       const created = await api.post<Issue>("/issues", {
         moduleId: Number(form.moduleId),
+        title: form.title.trim(),
         description: form.description,
         searchKeywords: form.searchKeywords || undefined,
         envInfo: form.envInfo || undefined,
@@ -64,92 +75,110 @@ export function IssueNewPage() {
 
   return (
     <>
-      <PageHeader title="新建问题" subtitle="登记一个新问题" actions={
+      <PageHeader title={`新建${issueTerm}`} subtitle={`登记一个新${issueTerm}`} actions={
         <>
           <Button variant="outline" onClick={() => navigate(-1)}>取消</Button>
           <Button onClick={submit} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin" />} 创建问题
+            {saving && <Loader2 className="size-4 animate-spin" />} 创建{issueTerm}
           </Button>
         </>
       } />
       <PageBody>
         <Card className="max-w-3xl">
           <CardContent className="grid grid-cols-2 gap-4 p-5">
-            <div className="col-span-2 flex flex-col gap-2">
-              <Label>问题描述 <span className="text-destructive">*</span></Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => set("description", e.target.value)}
-                placeholder="详细描述问题现象、复现步骤等"
-                rows={4}
+            <ConfiguredField config={field("title")} className="col-span-2">
+              <Input
+                id="issue-title"
+                autoFocus
+                maxLength={255}
+                className="h-11 text-base font-medium"
+                value={form.title}
+                onChange={(e) => set("title", e.target.value)}
+                placeholder={field("title")?.placeholder}
               />
-            </div>
-            <div className="col-span-2 flex flex-col gap-2">
-              <Label>查询关键字</Label>
+              <div className="text-right text-xs text-muted-foreground">{form.title.length}/255</div>
+            </ConfiguredField>
+            <ConfiguredField config={field("description")} className="col-span-2">
+              {(dict?.customization.features["rich-text"] ?? dict?.customization.features.richText ?? true)
+                ? <RichTextEditor
+                    value={form.description}
+                    onChange={(value) => set("description", value)}
+                    placeholder={field("description")?.placeholder}
+                  />
+                : <Textarea
+                    value={form.description}
+                    onChange={(event) => set("description", event.target.value)}
+                    placeholder={field("description")?.placeholder}
+                    rows={8}
+                  />}
+            </ConfiguredField>
+            <ConfiguredField config={field("searchKeywords")} className="col-span-2">
               <Input
                 value={form.searchKeywords}
                 onChange={(e) => set("searchKeywords", e.target.value)}
-                placeholder="文件 Hash、错误码、基线名称、导入时间等检索信息"
+                placeholder={field("searchKeywords")?.placeholder}
               />
-            </div>
+            </ConfiguredField>
 
-            <Field label="所属模块" required>
+            <ConfiguredField config={field("module")}>
               <Select value={form.moduleId} onValueChange={(v) => set("moduleId", v)}>
-                <SelectTrigger><SelectValue placeholder="选择模块" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={field("module")?.placeholder} /></SelectTrigger>
                 <SelectContent>
                   {dict?.modules
                     .filter((m) => !form.productId || m.productId === Number(form.productId))
                     .map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="来源产品">
+            </ConfiguredField>
+            <ConfiguredField config={field("product")}>
               <Select value={form.productId} onValueChange={(v) => { set("productId", v); set("moduleId", ""); set("foundVersionId", "") }}>
-                <SelectTrigger><SelectValue placeholder="选择产品" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={field("product")?.placeholder} /></SelectTrigger>
                 <SelectContent>
                   {dict?.products.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="问题领域">
+            </ConfiguredField>
+            <ConfiguredField config={field("domain")}>
               <Select value={form.domainId} onValueChange={(v) => set("domainId", v)}>
-                <SelectTrigger><SelectValue placeholder="选择领域" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={field("domain")?.placeholder} /></SelectTrigger>
                 <SelectContent>
                   {dict?.domains.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="发现版本">
+            </ConfiguredField>
+            <ConfiguredField config={field("foundVersion")}>
               <Select value={form.foundVersionId} onValueChange={(v) => set("foundVersionId", v)}>
-                <SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={field("foundVersion")?.placeholder} /></SelectTrigger>
                 <SelectContent>
                   {dict?.versions
                     .filter((v) => !form.productId || v.productId === Number(form.productId))
                     .map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.version}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="优先级">
+            </ConfiguredField>
+            <ConfiguredField config={field("priority")}>
               <Select value={form.priority} onValueChange={(v) => set("priority", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABEL[p]}</SelectItem>)}
+                  {dict?.customization.issue.priorities.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="VPN 信息">
-              <Input value={form.vpnInfo} onChange={(e) => set("vpnInfo", e.target.value)} placeholder="VPN 连接信息" />
-            </Field>
+            </ConfiguredField>
+            <ConfiguredField config={field("vpnInfo")}>
+              <Input value={form.vpnInfo} onChange={(e) => set("vpnInfo", e.target.value)}
+                placeholder={field("vpnInfo")?.placeholder} />
+            </ConfiguredField>
 
-            <div className="col-span-2 flex flex-col gap-2">
-              <Label>环境信息</Label>
+            <ConfiguredField config={field("envInfo")} className="col-span-2">
               <Textarea
                 value={form.envInfo}
                 onChange={(e) => set("envInfo", e.target.value)}
-                placeholder="操作系统、硬件、组网、配置等环境信息"
+                placeholder={field("envInfo")?.placeholder}
                 rows={3}
               />
-            </div>
+            </ConfiguredField>
           </CardContent>
         </Card>
       </PageBody>
@@ -157,10 +186,17 @@ export function IssueNewPage() {
   )
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function ConfiguredField({
+  config, className = "", children,
+}: {
+  config?: IssueFormFieldConfig
+  className?: string
+  children: React.ReactNode
+}) {
+  if (!config || !config.visible) return null
   return (
-    <div className="flex flex-col gap-2">
-      <Label>{label} {required && <span className="text-destructive">*</span>}</Label>
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <Label>{config.label} {config.required && <span className="text-destructive">*</span>}</Label>
       {children}
     </div>
   )

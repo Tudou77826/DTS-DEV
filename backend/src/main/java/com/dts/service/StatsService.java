@@ -1,10 +1,11 @@
 package com.dts.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.dts.domain.Issue;
 import com.dts.domain.IssueStatus;
-import com.dts.dto.IssueVo;
-import com.dts.repository.IssueRepository;
-import com.dts.repository.VersionInvestigationRepository;
-import com.dts.service.LookupService;
+import com.dts.domain.VersionInvestigation;
+import com.dts.mapper.IssueMapper;
+import com.dts.mapper.VersionInvestigationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,29 +19,32 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StatsService {
 
-    private final IssueRepository issueRepository;
-    private final VersionInvestigationRepository investigationRepository;
+    private final IssueMapper issueMapper;
+    private final VersionInvestigationMapper investigationMapper;
     private final LookupService lookup;
 
     @Transactional(readOnly = true)
     public Map<String, Object> overview() {
         Map<String, Object> m = new HashMap<>();
-        m.put("total", issueRepository.count());
-        m.put("todayNew", issueRepository.countByCreatedAtAfter(LocalDateTime.now().toLocalDate().atStartOfDay()));
-        m.put("resolved", issueRepository.countByStatus(IssueStatus.RESOLVED)
-                + issueRepository.countByStatus(IssueStatus.CLOSED));
-        m.put("unclosed", issueRepository.countByStatusNot(IssueStatus.CLOSED));
-        m.put("unassigned", issueRepository.countByAssigneeIdIsNull());
-        m.put("overdue", issueRepository.findOverdue(LocalDateTime.now()).size());
+        m.put("total", issueMapper.selectCount(null));
+        m.put("todayNew", issueMapper.selectCount(Wrappers.<Issue>lambdaQuery()
+                .ge(Issue::getCreatedAt, LocalDateTime.now().toLocalDate().atStartOfDay())));
+        m.put("resolved", issueMapper.selectCount(Wrappers.<Issue>lambdaQuery()
+                .in(Issue::getStatus, IssueStatus.TERMINAL)));
+        m.put("unclosed", issueMapper.selectCount(Wrappers.<Issue>lambdaQuery()
+                .ne(Issue::getStatus, IssueStatus.CLOSED)));
+        m.put("unassigned", issueMapper.selectCount(Wrappers.<Issue>lambdaQuery()
+                .isNull(Issue::getAssigneeId)));
+        m.put("overdue", issueMapper.findOverdue(LocalDateTime.now()).size());
 
         // 各状态分布
         Map<String, Long> statusDist = new HashMap<>();
-        issueRepository.countByStatusGrouped().forEach(s -> statusDist.put(s.getStatus(), s.getCnt()));
+        issueMapper.countByStatusGrouped().forEach(s -> statusDist.put(s.getBucket(), s.getCnt()));
         m.put("statusDist", statusDist);
 
         // 各模块分布
         Map<Long, Long> moduleDist = new HashMap<>();
-        issueRepository.countByModuleGrouped().forEach(b -> moduleDist.put(b.getBucket(), b.getCnt()));
+        issueMapper.countByModuleGrouped().forEach(b -> moduleDist.put(Long.valueOf(b.getBucket()), b.getCnt()));
         Map<String, Long> moduleNamed = new HashMap<>();
         lookup.moduleNames(moduleDist.keySet()).forEach((id, name) ->
                 moduleNamed.put(name, moduleDist.getOrDefault(id, 0L)));
@@ -48,7 +52,7 @@ public class StatsService {
 
         // 各开发人员待处理数
         Map<Long, Long> devDist = new HashMap<>();
-        issueRepository.countPendingByAssignee().forEach(b -> devDist.put(b.getBucket(), b.getCnt()));
+        issueMapper.countPendingByAssignee().forEach(b -> devDist.put(Long.valueOf(b.getBucket()), b.getCnt()));
         Map<String, Long> devNamed = new HashMap<>();
         lookup.userNames(devDist.keySet()).forEach((id, name) ->
                 devNamed.put(name, devDist.getOrDefault(id, 0L)));
@@ -60,7 +64,7 @@ public class StatsService {
     @Transactional(readOnly = true)
     public Map<Long, Long> versionRemainCount() {
         Map<Long, Long> result = new HashMap<>();
-        investigationRepository.findAll().forEach(v -> {
+        investigationMapper.selectList(null).forEach(v -> {
             if (!"NO_ISSUE".equals(v.getStatus()) && !"FIXED".equals(v.getStatus())) {
                 result.merge(v.getVersionId(), 1L, Long::sum);
             }

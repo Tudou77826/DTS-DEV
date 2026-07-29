@@ -1,8 +1,6 @@
 package com.dts.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,25 +12,20 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@Entity
+@TableName("issue_progress")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "issue_progress")
 public class IssueProgress extends BaseEntity {
 
-    @Column(name = "issue_id", nullable = false)
     private Long issueId;
 
     /** 记录人 ID */
-    @Column(name = "author_id", nullable = false)
     private Long authorId;
 
     /** 进展类型：PROGRESS / BLOCKER / NEXT_STEP / ROOT_CAUSE / WORKAROUND / RESOLUTION / VERIFY */
-    @Column(name = "type", nullable = false, length = 32)
     private String type;
 
     /** 内容 */
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 }

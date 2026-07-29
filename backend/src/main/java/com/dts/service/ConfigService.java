@@ -2,7 +2,10 @@ package com.dts.service;
 
 import com.dts.common.BusinessException;
 import com.dts.domain.*;
-import com.dts.repository.*;
+import com.dts.config.DtsCustomizationProperties;
+import com.dts.mapper.*;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,99 +20,104 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ConfigService {
 
-    private final UserRepository userRepository;
-    private final TeamRepository teamRepository;
-    private final ProductRepository productRepository;
-    private final ModuleRepository moduleRepository;
-    private final ProductVersionRepository versionRepository;
-    private final IssueDomainRepository domainRepository;
+    private final UserMapper userMapper;
+    private final TeamMapper teamMapper;
+    private final ProductMapper productMapper;
+    private final ModuleMapper moduleMapper;
+    private final ProductVersionMapper versionMapper;
+    private final IssueDomainMapper domainMapper;
+    private final DtsCustomizationProperties customization;
 
     // ─── 用户/团队 ───
     public List<User> listUsers() {
-        return userRepository.findAll();
+        return userMapper.selectList(null);
     }
 
     public List<User> listDevelopers() {
-        return userRepository.findByRoleAndActiveTrue("DEVELOPER");
+        return userMapper.selectList(Wrappers.<User>lambdaQuery()
+                .eq(User::getRole, "DEVELOPER")
+                .eq(User::getActive, true));
     }
 
     public List<Team> listTeams() {
-        return teamRepository.findAll();
+        return teamMapper.selectList(null);
     }
 
     @Transactional
     public Team saveTeam(Team team) {
-        return teamRepository.save(team);
+        return save(teamMapper, team);
     }
 
     @Transactional
     public void deleteTeam(Long id) {
-        if (userRepository.findAll().stream().anyMatch(u -> id.equals(u.getTeamId()))) {
+        if (userMapper.selectCount(Wrappers.<User>lambdaQuery().eq(User::getTeamId, id)) > 0) {
             throw new BusinessException("该团队下仍有用户，无法删除");
         }
-        teamRepository.deleteById(id);
+        teamMapper.deleteById(id);
     }
 
     // ─── 产品 ───
     public List<Product> listProducts() {
-        return productRepository.findByActiveTrue();
+        return productMapper.selectList(Wrappers.<Product>lambdaQuery().eq(Product::getActive, true));
     }
 
     @Transactional
     public Product saveProduct(Product p) {
-        return productRepository.save(p);
+        return save(productMapper, p);
     }
 
     @Transactional
     public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
+        productMapper.deleteById(id);
     }
 
     // ─── 模块 ───
     public List<ProductModule> listModules(Long productId) {
-        return productId != null ? moduleRepository.findByProductIdAndActiveTrue(productId)
-                : moduleRepository.findByActiveTrue();
+        return moduleMapper.selectList(Wrappers.<ProductModule>lambdaQuery()
+                .eq(productId != null, ProductModule::getProductId, productId)
+                .eq(ProductModule::getActive, true));
     }
 
     @Transactional
     public ProductModule saveModule(ProductModule m) {
-        return moduleRepository.save(m);
+        return save(moduleMapper, m);
     }
 
     @Transactional
     public void deleteModule(Long id) {
-        moduleRepository.deleteById(id);
+        moduleMapper.deleteById(id);
     }
 
     // ─── 版本 ───
     public List<ProductVersion> listVersions(Long productId) {
-        return productId != null ? versionRepository.findByProductIdAndActiveTrue(productId)
-                : versionRepository.findByActiveTrue();
+        return versionMapper.selectList(Wrappers.<ProductVersion>lambdaQuery()
+                .eq(productId != null, ProductVersion::getProductId, productId)
+                .eq(ProductVersion::getActive, true));
     }
 
     @Transactional
     public ProductVersion saveVersion(ProductVersion v) {
-        return versionRepository.save(v);
+        return save(versionMapper, v);
     }
 
     @Transactional
     public void deleteVersion(Long id) {
-        versionRepository.deleteById(id);
+        versionMapper.deleteById(id);
     }
 
     // ─── 问题领域 ───
     public List<IssueDomain> listDomains() {
-        return domainRepository.findAll();
+        return domainMapper.selectList(null);
     }
 
     @Transactional
     public IssueDomain saveDomain(IssueDomain d) {
-        return domainRepository.save(d);
+        return save(domainMapper, d);
     }
 
     @Transactional
     public void deleteDomain(Long id) {
-        domainRepository.deleteById(id);
+        domainMapper.deleteById(id);
     }
 
     /**
@@ -123,6 +131,16 @@ public class ConfigService {
                 "products", listProducts(),
                 "modules", listModules(null),
                 "versions", listVersions(null),
-                "domains", listDomains());
+                "domains", listDomains(),
+                "customization", customization);
+    }
+
+    private <T extends BaseEntity> T save(BaseMapper<T> mapper, T entity) {
+        if (entity.getId() == null) {
+            mapper.insert(entity);
+        } else if (mapper.updateById(entity) == 0) {
+            throw new BusinessException("记录不存在: " + entity.getId());
+        }
+        return entity;
     }
 }

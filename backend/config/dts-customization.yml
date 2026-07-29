@@ -1,0 +1,265 @@
+dts:
+  customization:
+    profile:
+      id: default-dev-team
+      name: 默认研发团队接入配置
+      target-team: 网络安全组
+      target-system: DTS
+    branding:
+      product-name: 问题管理平台
+      short-name: DTS
+      login-title: 登录
+      login-subtitle: 使用账号密码登录系统
+      primary-color: '#2466eb'
+      show-demo-accounts: true
+      demo-account-hint: 演示环境默认密码为 123456
+    terminology:
+      issue: 问题
+      product: 来源产品
+      module: 所属模块
+      version: 发现版本
+      domain: 问题领域
+      submitter: 提出人
+      assignee: 责任人
+    roles:
+    - value: SUBMITTER
+      label: 问题提出人
+      color: null
+    - value: DEVELOPER
+      label: 开发人员
+      color: null
+    - value: LEADER
+      label: 项目负责人
+      color: null
+    - value: ADMIN
+      label: 管理员
+      color: null
+    issue:
+      code:
+        prefix: ISS
+        date-pattern: yyMMdd
+        sequence-digits: 3
+      default-priority: MEDIUM
+      priorities:
+      - value: LOW
+        label: 低
+        color: neutral
+      - value: MEDIUM
+        label: 中
+        color: blue
+      - value: HIGH
+        label: 高
+        color: orange
+      - value: URGENT
+        label: 紧急
+        color: red
+      statuses:
+      - value: PENDING_ASSIGN
+        label: 待分配
+        color: neutral
+      - value: PENDING_LOCATE
+        label: 待定位
+        color: amber
+      - value: LOCATING
+        label: 定位中
+        color: blue
+      - value: PENDING_VERIFY
+        label: 待验证
+        color: violet
+      - value: RESOLVED
+        label: 已解决
+        color: green
+      - value: CLOSED
+        label: 已关闭
+        color: neutral
+      - value: NEED_INFO
+        label: 待补充信息
+        color: orange
+      - value: DEFERRED
+        label: 暂缓处理
+        color: neutral
+      - value: CANNOT_REPRODUCE
+        label: 无法复现
+        color: red
+      - value: WONT_FIX
+        label: 无须处理
+        color: neutral
+      - value: REOPENED
+        label: 重新打开
+        color: red
+      fields:
+        title:
+          label: 问题标题
+          placeholder: 用一句话概括问题，例如：策略下发后设备配置未生效
+          required: true
+          visible: true
+        description:
+          label: 问题描述
+          placeholder: 详细描述问题现象、复现步骤、日志与上下文…
+          required: true
+          visible: true
+        searchKeywords:
+          label: 查询关键字
+          placeholder: 文件 Hash、错误码、基线名称、导入时间等检索信息
+          required: false
+          visible: true
+        module:
+          label: 所属模块
+          placeholder: 选择模块
+          required: true
+          visible: true
+        product:
+          label: 来源产品
+          placeholder: 选择产品
+          required: false
+          visible: true
+        domain:
+          label: 问题领域
+          placeholder: 选择领域
+          required: false
+          visible: true
+        foundVersion:
+          label: 发现版本
+          placeholder: 选择版本
+          required: false
+          visible: true
+        priority:
+          label: 优先级
+          placeholder: null
+          required: false
+          visible: true
+        vpnInfo:
+          label: VPN 信息
+          placeholder: VPN 连接信息
+          required: false
+          visible: true
+        envInfo:
+          label: 环境信息
+          placeholder: 操作系统、硬件、组网、配置等环境信息
+          required: false
+          visible: true
+      transitions:
+        PENDING_ASSIGN:
+        - PENDING_LOCATE
+        - NEED_INFO
+        PENDING_LOCATE:
+        - LOCATING
+        - NEED_INFO
+        - DEFERRED
+        LOCATING:
+        - PENDING_VERIFY
+        - NEED_INFO
+        - DEFERRED
+        - CANNOT_REPRODUCE
+        - WONT_FIX
+        PENDING_VERIFY:
+        - RESOLVED
+        - LOCATING
+        - NEED_INFO
+        RESOLVED:
+        - CLOSED
+        - REOPENED
+        CLOSED:
+        - REOPENED
+        NEED_INFO:
+        - PENDING_LOCATE
+        - LOCATING
+        DEFERRED:
+        - LOCATING
+        CANNOT_REPRODUCE:
+        - LOCATING
+        - CLOSED
+        WONT_FIX:
+        - CLOSED
+        REOPENED:
+        - PENDING_LOCATE
+        - LOCATING
+    master-data:
+      sync-mode: merge
+      teams:
+      - key: network-security
+        name: 网络安全组
+        description: 问题排查与定位团队
+      users:
+      - employee-no: A0001
+        username: admin
+        display-name: 系统管理员
+        role: ADMIN
+        team: network-security
+        avatar-color: '#6366f1'
+        active: true
+      - employee-no: L0001
+        username: leader
+        display-name: 张项目负责人
+        role: LEADER
+        team: network-security
+        avatar-color: '#0ea5e9'
+        active: true
+      - employee-no: D1001
+        username: wangwu
+        display-name: 王五
+        role: DEVELOPER
+        team: network-security
+        avatar-color: '#10b981'
+        active: true
+      - employee-no: D1002
+        username: zhaoliu
+        display-name: 赵六
+        role: DEVELOPER
+        team: network-security
+        avatar-color: '#f59e0b'
+        active: true
+      - employee-no: D1003
+        username: sunqi
+        display-name: 孙七
+        role: DEVELOPER
+        team: network-security
+        avatar-color: '#ec4899'
+        active: true
+      - employee-no: S2001
+        username: submitter
+        display-name: 李提出人
+        role: SUBMITTER
+        team: network-security
+        avatar-color: '#8b5cf6'
+        active: true
+      products:
+      - key: hisec
+        name: HiSec
+        description: 安全网关产品
+        modules:
+        - 入侵检测
+        - 流量清洗
+        - 日志审计
+        versions:
+        - V500R020C00
+        - V500R020C10
+        - V500R021C00
+      - key: secospace
+        name: SecoSpace
+        description: 安全管理平台
+        modules:
+        - 策略下发
+        versions:
+        - V200R001C00
+      domains:
+      - name: 功能缺陷
+        description: null
+      - name: 性能问题
+        description: null
+      - name: 兼容性
+        description: null
+      - name: 配置问题
+        description: null
+      - name: 安全漏洞
+        description: null
+    features:
+      attachments: true
+      relations: true
+      notifications: true
+      investigations: true
+      batch-operations: true
+      excel-export: true
+      rich-text: true
+    extensions: {
+      }

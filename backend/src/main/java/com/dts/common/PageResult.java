@@ -2,7 +2,7 @@ package com.dts.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.springframework.data.domain.Page;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 
 import java.util.List;
 
@@ -19,21 +19,21 @@ public class PageResult<T> {
     private int size;
     private int totalPages;
 
-    public static <T> PageResult<T> of(Page<T> page) {
+    public static <T> PageResult<T> of(IPage<T> page) {
         return new PageResult<>(
-                page.getContent(),
-                page.getTotalElements(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalPages());
+                page.getRecords(),
+                page.getTotal(),
+                Math.toIntExact(page.getCurrent()),
+                Math.toIntExact(page.getSize()),
+                Math.toIntExact(page.getPages()));
     }
 
-    public static <T, R> PageResult<R> of(Page<T> page, List<R> mapped) {
+    public static <T, R> PageResult<R> of(IPage<T> page, List<R> mapped) {
         return new PageResult<>(
                 mapped,
-                page.getTotalElements(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalPages());
+                page.getTotal(),
+                Math.toIntExact(page.getCurrent()),
+                Math.toIntExact(page.getSize()),
+                Math.toIntExact(page.getPages()));
     }
 }

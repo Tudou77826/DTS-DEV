@@ -1,89 +1,151 @@
 package com.dts.config;
 
 import com.dts.domain.*;
-import com.dts.repository.*;
+import com.dts.mapper.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
- * 启动时初始化种子数据（仅在库为空时插入）。
+ * 启动时把接入配置中的组织、人员和业务主数据同步到运行库。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
-    private final UserRepository userRepository;
-    private final TeamRepository teamRepository;
-    private final ProductRepository productRepository;
-    private final ModuleRepository moduleRepository;
-    private final ProductVersionRepository versionRepository;
-    private final IssueDomainRepository domainRepository;
+    private final UserMapper userMapper;
+    private final TeamMapper teamMapper;
+    private final ProductMapper productMapper;
+    private final ModuleMapper moduleMapper;
+    private final ProductVersionMapper versionMapper;
+    private final IssueDomainMapper domainMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DtsCustomizationProperties customization;
+
+    @Value("${app.bootstrap.default-user-password}")
+    private String defaultUserPassword;
 
     @Override
     public void run(String... args) {
-        if (userRepository.count() > 0) {
-            log.info("数据已存在，跳过种子初始化");
-            return;
-        }
-        log.info("开始初始化种子数据...");
-
-        Team team = teamRepository.save(Team.builder().name("网络安全组").description("问题排查与定位团队").build());
-
-        // 用户（密码统一 123456）
-        String pwd = passwordEncoder.encode("123456");
-        User admin = save("admin", "A0001", "系统管理员", "ADMIN", pwd, team.getId());
-        User leader = save("leader", "L0001", "张项目负责人", "LEADER", pwd, team.getId());
-        User dev1 = save("wangwu", "D1001", "王五", "DEVELOPER", pwd, team.getId());
-        User dev2 = save("zhaoliu", "D1002", "赵六", "DEVELOPER", pwd, team.getId());
-        User dev3 = save("sunqi", "D1003", "孙七", "DEVELOPER", pwd, team.getId());
-        User submitter = save("submitter", "S2001", "李提出人", "SUBMITTER", pwd, team.getId());
-
-        // 产品
-        Product hisec = productRepository.save(Product.builder().name("HiSec").description("安全网关产品").build());
-        Product secospace = productRepository.save(Product.builder().name("SecoSpace").description("安全管理平台").build());
-
-        // 模块
-        ProductModule m1 = moduleRepository.save(ProductModule.builder().productId(hisec.getId()).name("入侵检测").build());
-        ProductModule m2 = moduleRepository.save(ProductModule.builder().productId(hisec.getId()).name("流量清洗").build());
-        ProductModule m3 = moduleRepository.save(ProductModule.builder().productId(hisec.getId()).name("日志审计").build());
-        ProductModule m4 = moduleRepository.save(ProductModule.builder().productId(secospace.getId()).name("策略下发").build());
-
-        // 版本
-        ProductVersion v1 = versionRepository.save(ProductVersion.builder().productId(hisec.getId()).version("V500R020C00").build());
-        ProductVersion v2 = versionRepository.save(ProductVersion.builder().productId(hisec.getId()).version("V500R020C10").build());
-        ProductVersion v3 = versionRepository.save(ProductVersion.builder().productId(hisec.getId()).version("V500R021C00").build());
-        versionRepository.save(ProductVersion.builder().productId(secospace.getId()).version("V200R001C00").build());
-
-        // 问题领域
-        domainRepository.save(IssueDomain.builder().name("功能缺陷").build());
-        domainRepository.save(IssueDomain.builder().name("性能问题").build());
-        domainRepository.save(IssueDomain.builder().name("兼容性").build());
-        domainRepository.save(IssueDomain.builder().name("配置问题").build());
-        domainRepository.save(IssueDomain.builder().name("安全漏洞").build());
-
-        log.info("种子数据初始化完成: 6 个用户、2 个产品、4 个模块、4 个版本、5 个领域");
-        log.info("登录账号: admin/leader/wangwu/zhaoliu/sunqi/submitter，密码均为 123456");
+        syncOrganization();
+        syncIssueFormOptions();
     }
 
-    private User save(String username, String empNo, String name, String role, String pwd, Long teamId) {
-        String[] colors = {"#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"};
-        int idx = List.of("admin", "leader", "wangwu", "zhaoliu", "sunqi", "submitter").indexOf(username);
-        return userRepository.save(User.builder()
-                .employeeNo(empNo)
-                .username(username)
-                .displayName(name)
-                .password(pwd)
-                .role(role)
-                .teamId(teamId)
-                .avatarColor(colors[Math.max(0, idx)])
-                .active(true)
-                .build());
+    /**
+     * 团队与人员以接入配置为来源。重启时按稳定 key/username 合并，
+     * 已有账号的密码不会被配置同步覆盖。
+     */
+    private void syncOrganization() {
+        Map<String, Long> teamIds = new LinkedHashMap<>();
+        for (DtsCustomizationProperties.TeamOption configured : customization.getMasterData().getTeams()) {
+            Team team = teamMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<Team>lambdaQuery()
+                    .eq(Team::getName, configured.getName()).last("LIMIT 1"));
+            if (team == null) {
+                team = insert(teamMapper, Team.builder()
+                        .name(configured.getName())
+                        .description(configured.getDescription())
+                        .build());
+            } else if (!java.util.Objects.equals(team.getDescription(), configured.getDescription())) {
+                team.setDescription(configured.getDescription());
+                teamMapper.updateById(team);
+            }
+            teamIds.put(configured.getKey(), team.getId());
+        }
+
+        int created = 0;
+        int updated = 0;
+        for (DtsCustomizationProperties.UserOption configured : customization.getMasterData().getUsers()) {
+            User user = userMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<User>lambdaQuery()
+                    .eq(User::getUsername, configured.getUsername()).last("LIMIT 1"));
+            boolean isNew = user == null;
+            if (isNew) {
+                user = new User();
+                user.setUsername(configured.getUsername());
+                user.setPassword(passwordEncoder.encode(defaultUserPassword));
+            }
+            user.setEmployeeNo(configured.getEmployeeNo());
+            user.setDisplayName(configured.getDisplayName());
+            user.setRole(configured.getRole());
+            user.setTeamId(teamIds.get(configured.getTeam()));
+            user.setAvatarColor(configured.getAvatarColor());
+            user.setActive(configured.isActive());
+            if (isNew) {
+                userMapper.insert(user);
+                created++;
+            } else {
+                userMapper.updateById(user);
+                updated++;
+            }
+        }
+        log.info("已从接入配置同步组织人员: 团队 {} 个，新增用户 {} 个，更新用户 {} 个",
+                teamIds.size(), created, updated);
+    }
+
+    /**
+     * 以“合并”方式加载表单配置：配置文件可新增或更新默认字典，
+     * 不删除管理员在页面中维护的其他数据。
+     */
+    private void syncIssueFormOptions() {
+        for (DtsCustomizationProperties.ProductOption configured : customization.getMasterData().getProducts()) {
+            Product product = productMapper.selectOne(
+                    com.baomidou.mybatisplus.core.toolkit.Wrappers.<Product>lambdaQuery()
+                            .eq(Product::getName, configured.getName()).last("LIMIT 1"));
+            if (product == null) {
+                product = insert(productMapper, Product.builder()
+                        .name(configured.getName())
+                        .description(configured.getDescription())
+                        .active(true)
+                        .build());
+            } else {
+                product.setDescription(configured.getDescription());
+                product.setActive(true);
+                productMapper.updateById(product);
+            }
+            final Long productId = product.getId();
+            for (String moduleName : configured.getModules()) {
+                if (moduleMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ProductModule>lambdaQuery()
+                        .eq(ProductModule::getProductId, productId)
+                        .eq(ProductModule::getName, moduleName)) == 0) {
+                    insert(moduleMapper, ProductModule.builder()
+                            .productId(productId).name(moduleName).active(true).build());
+                }
+            }
+            for (String versionName : configured.getVersions()) {
+                if (versionMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ProductVersion>lambdaQuery()
+                        .eq(ProductVersion::getProductId, productId)
+                        .eq(ProductVersion::getVersion, versionName)) == 0) {
+                    insert(versionMapper, ProductVersion.builder()
+                            .productId(productId).version(versionName).active(true).build());
+                }
+            }
+        }
+        for (DtsCustomizationProperties.DomainOption configured : customization.getMasterData().getDomains()) {
+            IssueDomain domain = domainMapper.selectOne(
+                    com.baomidou.mybatisplus.core.toolkit.Wrappers.<IssueDomain>lambdaQuery()
+                            .eq(IssueDomain::getName, configured.getName()).last("LIMIT 1"));
+            if (domain == null) {
+                insert(domainMapper, IssueDomain.builder()
+                        .name(configured.getName()).description(configured.getDescription()).build());
+            } else if (!java.util.Objects.equals(domain.getDescription(), configured.getDescription())) {
+                domain.setDescription(configured.getDescription());
+                domainMapper.updateById(domain);
+            }
+        }
+        log.info("已加载接入配置 {}，主数据同步模式: {}",
+                customization.getProfile().getId(), customization.getMasterData().getSyncMode());
+    }
+
+    private <T extends BaseEntity> T insert(com.baomidou.mybatisplus.core.mapper.BaseMapper<T> mapper, T entity) {
+        mapper.insert(entity);
+        return entity;
     }
 }

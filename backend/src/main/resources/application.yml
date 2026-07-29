@@ -6,6 +6,10 @@ server:
 spring:
   application:
     name: dts-backend
+  config:
+    import:
+      - optional:classpath:dts-customization.yml
+      - optional:file:./config/dts-customization.yml
 
   datasource:
     url: jdbc:mysql://localhost:3306/dts?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
@@ -13,19 +17,11 @@ spring:
     password: dts123
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: update
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: true
-        jdbc.time_zone: Asia/Shanghai
-    defer-datasource-initialization: true
-
-  sql:
-    init:
-      mode: always
+  # Flyway 建表与迁移（替代 JPA ddl-auto）
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
   data:
     redis:
@@ -37,8 +33,24 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
+# MyBatis-Plus
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: null
+      id-type: auto
+
 # JWT
 app:
+  customization:
+    external-file: ./config/dts-customization.yml
+  bootstrap:
+    # 仅用于首次创建配置文件中的账号；已有账号密码不会在重启时被覆盖。
+    default-user-password: ${DTS_BOOTSTRAP_DEFAULT_PASSWORD:123456}
+  storage:
+    root: ./uploads
   jwt:
     secret: dts-dev-secret-key-please-change-in-production-environment-very-long-32bytes
     expiration-ms: 86400000   # 24h
@@ -54,4 +66,4 @@ springdoc:
 logging:
   level:
     com.dts: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.dts.mapper: DEBUG

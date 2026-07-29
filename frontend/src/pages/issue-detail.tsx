@@ -16,12 +16,16 @@ import { ProgressTimeline } from "@/components/issue/progress-timeline"
 import { InvestigationPanel } from "@/components/issue/investigation-panel"
 import { CommentList } from "@/components/issue/comment-list"
 import { OperationTimeline } from "@/components/issue/operation-timeline"
+import { AttachmentPanel } from "@/components/issue/attachment-panel"
+import { RelationPanel } from "@/components/issue/relation-panel"
 import {
   PRIORITY_META, formatDateTime, formatDuration,
 } from "@/lib/labels"
 import type {
   Issue, IssueProgress, Comment, OperationLog, VersionInvestigation, Priority,
+  IssueAttachment, IssueRelation,
 } from "@/lib/types"
+import { useCustomization } from "@/store/customization"
 
 export function IssueDetailPage() {
   const { id } = useParams()
@@ -31,24 +35,33 @@ export function IssueDetailPage() {
   const [comments, setComments] = useState<Comment[]>([])
   const [ops, setOps] = useState<OperationLog[]>([])
   const [investigations, setInvestigations] = useState<VersionInvestigation[]>([])
+  const [attachments, setAttachments] = useState<IssueAttachment[]>([])
+  const [relations, setRelations] = useState<IssueRelation[]>([])
   const [loading, setLoading] = useState(true)
+  const customization = useCustomization((state) => state.value)
+  const investigationsEnabled = customization?.features.investigations !== false
+  const attachmentsEnabled = customization?.features.attachments !== false
+  const relationsEnabled = customization?.features.relations !== false
 
   const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
-      const [i, p, c, o, inv] = await Promise.all([
+      const [i, p, c, o, inv, files, links] = await Promise.all([
         api.get<Issue>(`/issues/${id}`),
         api.get<IssueProgress[]>(`/issues/${id}/progress`),
         api.get<Comment[]>(`/issues/${id}/comments`),
         api.get<OperationLog[]>(`/issues/${id}/operations`),
-        api.get<VersionInvestigation[]>(`/investigations?issueId=${id}`),
+        investigationsEnabled ? api.get<VersionInvestigation[]>(`/investigations?issueId=${id}`) : Promise.resolve([]),
+        attachmentsEnabled ? api.get<IssueAttachment[]>(`/issues/${id}/attachments`) : Promise.resolve([]),
+        relationsEnabled ? api.get<IssueRelation[]>(`/issues/${id}/relations`) : Promise.resolve([]),
       ])
       setIssue(i); setProgress(p); setComments(c); setOps(o); setInvestigations(inv)
+      setAttachments(files); setRelations(links)
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, investigationsEnabled, attachmentsEnabled, relationsEnabled])
 
   useEffect(() => { load() }, [load])
 
@@ -71,7 +84,7 @@ export function IssueDetailPage() {
     <>
       <PageHeader
         title={issue.code}
-        subtitle={issue.description}
+        subtitle={issue.title}
         actions={
           <>
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -114,8 +127,10 @@ export function IssueDetailPage() {
               <TabsList>
                 <TabsTrigger value="info">基础信息</TabsTrigger>
                 <TabsTrigger value="progress">处理记录 ({progress.length})</TabsTrigger>
-                <TabsTrigger value="investigation">版本排查 ({investigations.length})</TabsTrigger>
+                {investigationsEnabled && <TabsTrigger value="investigation">版本排查 ({investigations.length})</TabsTrigger>}
                 <TabsTrigger value="comments">评论 ({comments.length})</TabsTrigger>
+                {attachmentsEnabled && <TabsTrigger value="attachments">附件 ({attachments.length})</TabsTrigger>}
+                {relationsEnabled && <TabsTrigger value="relations">关联 ({relations.length})</TabsTrigger>}
                 <TabsTrigger value="timeline">操作时间线</TabsTrigger>
               </TabsList>
 
@@ -125,12 +140,18 @@ export function IssueDetailPage() {
               <TabsContent value="progress" className="mt-4">
                 <ProgressTimeline issueId={issue.id} items={progress} onChanged={load} />
               </TabsContent>
-              <TabsContent value="investigation" className="mt-4">
+              {investigationsEnabled && <TabsContent value="investigation" className="mt-4">
                 <InvestigationPanel issueId={issue.id} items={investigations} onChanged={load} />
-              </TabsContent>
+              </TabsContent>}
               <TabsContent value="comments" className="mt-4">
                 <CommentList issueId={issue.id} items={comments} onChanged={load} />
               </TabsContent>
+              {attachmentsEnabled && <TabsContent value="attachments" className="mt-4">
+                <AttachmentPanel issueId={issue.id} items={attachments} onChanged={load} />
+              </TabsContent>}
+              {relationsEnabled && <TabsContent value="relations" className="mt-4">
+                <RelationPanel issueId={issue.id} items={relations} onChanged={load} />
+              </TabsContent>}
               <TabsContent value="timeline" className="mt-4">
                 <OperationTimeline items={ops} />
               </TabsContent>
