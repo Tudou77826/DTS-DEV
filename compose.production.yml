@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: dts-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: sqlite
+      SPRING_DATASOURCE_URL: jdbc:sqlite:/data/dts.db
+      APP_CUSTOMIZATION_EXTERNAL_FILE: /data/config/dts-customization.yml
+      APP_STORAGE_ROOT: /data/uploads
+      APP_JWT_SECRET: ${DTS_JWT_SECRET:?DTS_JWT_SECRET must be set}
+      DTS_BOOTSTRAP_DEFAULT_PASSWORD: ${DTS_BOOTSTRAP_DEFAULT_PASSWORD:-123456}
+    volumes:
+      - dts-data:/data
+    networks:
+      - dts
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: dts-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "18082:80"
+    networks:
+      - dts
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+networks:
+  dts:
+
+volumes:
+  dts-data:
