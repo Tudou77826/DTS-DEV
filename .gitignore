@@ -1,0 +1,31 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+backend/target/
+backend/.mvn/
+backend/HELP.md
+*.class
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.local
+*.env.local
+
+# 本地验证用 SQLite 数据库（sqlite profile 生成）
+*.db
+
+# OS
+.DS_Store
+Thumbs.db

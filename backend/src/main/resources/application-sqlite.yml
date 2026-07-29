@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:./dts-dev.db
+    driver-class-name: org.sqlite.JDBC
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 1   # SQLite 写并发受限
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+
+# 关闭 Redis 强依赖（本地验证无需）
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+logging:
+  level:
+    com.dts: DEBUG
+    org.hibernate.SQL: WARN

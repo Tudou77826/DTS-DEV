@@ -1,0 +1,57 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: dts-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/dts?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: dts
+    password: dts123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc.time_zone: Asia/Shanghai
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# JWT
+app:
+  jwt:
+    secret: dts-dev-secret-key-please-change-in-production-environment-very-long-32bytes
+    expiration-ms: 86400000   # 24h
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.dts: DEBUG
+    org.hibernate.SQL: DEBUG

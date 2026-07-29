@@ -1,0 +1,103 @@
+package com.dts.controller;
+
+import com.dts.common.ApiResponse;
+import com.dts.common.PageResult;
+import com.dts.domain.Comment;
+import com.dts.domain.IssueProgress;
+import com.dts.domain.OperationLog;
+import com.dts.dto.IssueDtos;
+import com.dts.dto.IssueVo;
+import com.dts.service.IssueService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/issues")
+@RequiredArgsConstructor
+public class IssueController {
+
+    private final IssueService issueService;
+
+    @GetMapping
+    public ApiResponse<PageResult<IssueVo>> page(IssueDtos.IssueQuery query) {
+        return ApiResponse.ok(issueService.page(query));
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<IssueVo> detail(@PathVariable Long id) {
+        return ApiResponse.ok(issueService.detail(id));
+    }
+
+    @PostMapping
+    public ApiResponse<IssueVo> create(@Valid @RequestBody IssueDtos.IssueSaveRequest req) {
+        return ApiResponse.ok(issueService.create(req));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<IssueVo> update(@PathVariable Long id, @Valid @RequestBody IssueDtos.IssueSaveRequest req) {
+        req.setId(id);
+        return ApiResponse.ok(issueService.update(req));
+    }
+
+    // ─── 分配/状态 ───
+
+    @PostMapping("/{id}/assign")
+    public ApiResponse<IssueVo> assign(@PathVariable Long id, @RequestBody IssueDtos.AssignRequest req) {
+        return ApiResponse.ok(issueService.assign(id, req));
+    }
+
+    @PostMapping("/{id}/status")
+    public ApiResponse<IssueVo> changeStatus(@PathVariable Long id, @RequestBody IssueDtos.StatusChangeRequest req) {
+        return ApiResponse.ok(issueService.changeStatus(id, req));
+    }
+
+    // ─── 进展 ───
+
+    @GetMapping("/{id}/progress")
+    public ApiResponse<List<IssueProgress>> progress(@PathVariable Long id) {
+        return ApiResponse.ok(issueService.progressTimeline(id));
+    }
+
+    @PostMapping("/{id}/progress")
+    public ApiResponse<IssueProgress> addProgress(@PathVariable Long id, @Valid @RequestBody IssueDtos.ProgressRequest req) {
+        return ApiResponse.ok(issueService.addProgress(id, req));
+    }
+
+    // ─── 评论 ───
+
+    @GetMapping("/{id}/comments")
+    public ApiResponse<List<Comment>> comments(@PathVariable Long id) {
+        return ApiResponse.ok(issueService.comments(id));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ApiResponse<Comment> addComment(@PathVariable Long id, @Valid @RequestBody IssueDtos.CommentRequest req) {
+        return ApiResponse.ok(issueService.addComment(id, req));
+    }
+
+    // ─── 操作日志 ───
+
+    @GetMapping("/{id}/operations")
+    public ApiResponse<List<OperationLog>> operations(@PathVariable Long id) {
+        return ApiResponse.ok(issueService.operations(id));
+    }
+
+    // ─── 我的任务 ───
+
+    @GetMapping("/my-tasks")
+    public ApiResponse<PageResult<IssueVo>> myTasks(
+            @RequestParam(defaultValue = "all") String tab,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(issueService.myTasks(tab, page, size));
+    }
+
+    @GetMapping("/my-summary")
+    public ApiResponse<Map<String, Long>> mySummary() {
+        return ApiResponse.ok(issueService.mySummary());
+    }
+}
