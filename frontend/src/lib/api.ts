@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./types"
 
-const BASE = "/api"
+const BASE = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`
 
 let onUnauthorized: (() => void) | null = null
 

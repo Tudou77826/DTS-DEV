@@ -6,10 +6,12 @@ import "./index.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
+const routerBase = import.meta.env.BASE_URL.replace(/\/$/, "") || "/"
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBase}>
         <App />
         <Toaster position="top-center" richColors />
       </BrowserRouter>
