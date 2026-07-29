@@ -83,8 +83,8 @@ export function IssueDetailPage() {
   return (
     <>
       <PageHeader
-        title={issue.code}
-        subtitle={issue.title}
+        title={issue.title}
+        subtitle={issue.code}
         actions={
           <>
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
