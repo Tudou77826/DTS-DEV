@@ -62,11 +62,12 @@ public class StatsService {
     }
 
     @Transactional(readOnly = true)
-    public Map<Long, Long> versionRemainCount() {
-        Map<Long, Long> result = new HashMap<>();
+    public Map<String, Long> versionRemainCount() {
+        Map<String, Long> result = new HashMap<>();
         investigationMapper.selectList(null).forEach(v -> {
-            if (!"NO_ISSUE".equals(v.getStatus()) && !"FIXED".equals(v.getStatus())) {
-                result.merge(v.getVersionId(), 1L, Long::sum);
+            if (v.getVersionName() != null
+                    && !"NO_ISSUE".equals(v.getStatus()) && !"FIXED".equals(v.getStatus())) {
+                result.merge(v.getVersionName(), 1L, Long::sum);
             }
         });
         return result;

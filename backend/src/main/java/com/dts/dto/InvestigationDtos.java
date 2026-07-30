@@ -13,22 +13,22 @@ public class InvestigationDtos {
     public static class InvestigationSaveRequest {
         @NotNull(message = "问题ID不能为空")
         private Long issueId;
-        @NotNull(message = "版本ID不能为空")
-        private Long versionId;
+        @NotBlank(message = "版本不能为空")
+        private String versionName;
         private Long investigatorId;
         @NotBlank(message = "排查状态不能为空")
         private String status;
         private String result;
         private String handlingNote;
-        private Long fixVersionId;
+        private String fixVersionName;
         private String verifyResult;
     }
 
     /** 按版本生成待排查清单 */
     @Data
     public static class GenerateInvestigationRequest {
-        @NotNull(message = "版本ID不能为空")
-        private Long versionId;
+        @NotBlank(message = "版本不能为空")
+        private String versionName;
         /** 限定问题范围（为空则取所有非关闭问题） */
         private List<Long> issueIds;
         /** 默认排查人 */

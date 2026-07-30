@@ -36,9 +36,9 @@ public class InvestigationService {
     }
 
     @Transactional(readOnly = true)
-    public List<VersionInvestigation> listByVersion(Long versionId) {
+    public List<VersionInvestigation> listByVersion(String versionName) {
         return investigationMapper.selectList(Wrappers.<VersionInvestigation>lambdaQuery()
-                .eq(VersionInvestigation::getVersionId, versionId)
+                .eq(VersionInvestigation::getVersionName, normalizeVersion(versionName))
                 .orderByAsc(VersionInvestigation::getCreatedAt));
     }
 
@@ -50,12 +50,12 @@ public class InvestigationService {
         }
         VersionInvestigation v = VersionInvestigation.builder()
                 .issueId(req.getIssueId())
-                .versionId(req.getVersionId())
+                .versionName(normalizeVersion(req.getVersionName()))
                 .investigatorId(req.getInvestigatorId() != null ? req.getInvestigatorId() : SecurityUtil.currentUserId())
                 .status(req.getStatus())
                 .result(req.getResult())
                 .handlingNote(req.getHandlingNote())
-                .fixVersionId(req.getFixVersionId())
+                .fixVersionName(normalizeOptionalVersion(req.getFixVersionName()))
                 .verifyResult(req.getVerifyResult())
                 .completedAt(isTerminal(req.getStatus()) ? LocalDateTime.now() : null)
                 .build();
@@ -70,12 +70,12 @@ public class InvestigationService {
         if (v == null) {
             throw new BusinessException("排查记录不存在: " + id);
         }
-        v.setVersionId(req.getVersionId());
+        v.setVersionName(normalizeVersion(req.getVersionName()));
         if (req.getInvestigatorId() != null) v.setInvestigatorId(req.getInvestigatorId());
         v.setStatus(req.getStatus());
         v.setResult(req.getResult());
         v.setHandlingNote(req.getHandlingNote());
-        v.setFixVersionId(req.getFixVersionId());
+        v.setFixVersionName(normalizeOptionalVersion(req.getFixVersionName()));
         v.setVerifyResult(req.getVerifyResult());
         if (isTerminal(req.getStatus()) && v.getCompletedAt() == null) {
             v.setCompletedAt(LocalDateTime.now());
@@ -96,24 +96,25 @@ public class InvestigationService {
             issues = issueMapper.selectList(Wrappers.<Issue>lambdaQuery()
                     .notIn(Issue::getStatus, IssueStatus.TERMINAL));
         }
-        // 已存在的 (issueId, versionId) 不重复创建
+        String versionName = normalizeVersion(req.getVersionName());
+        // 已存在的 (issueId, versionName) 不重复创建
         List<Long> issueIds = issues.stream().map(Issue::getId).toList();
         Set<String> existing = (issueIds.isEmpty() ? List.<VersionInvestigation>of()
                 : investigationMapper.selectList(Wrappers.<VersionInvestigation>lambdaQuery()
                         .in(VersionInvestigation::getIssueId, issueIds))).stream()
-                .map(v -> v.getIssueId() + ":" + v.getVersionId())
+                .map(v -> v.getIssueId() + ":" + v.getVersionName())
                 .collect(Collectors.toSet());
 
         long created = 0, skipped = 0;
         for (Issue issue : issues) {
-            String key = issue.getId() + ":" + req.getVersionId();
+            String key = issue.getId() + ":" + versionName;
             if (existing.contains(key)) {
                 skipped++;
                 continue;
             }
             VersionInvestigation v = VersionInvestigation.builder()
                     .issueId(issue.getId())
-                    .versionId(req.getVersionId())
+                    .versionName(versionName)
                     .investigatorId(req.getDefaultInvestigatorId() != null
                             ? req.getDefaultInvestigatorId() : issue.getAssigneeId())
                     .status("PENDING")
@@ -135,5 +136,16 @@ public class InvestigationService {
 
     private boolean isTerminal(String status) {
         return "NO_ISSUE".equals(status) || "FIXED".equals(status);
+    }
+
+    private String normalizeVersion(String value) {
+        String version = value == null ? "" : value.trim();
+        if (version.isEmpty()) throw new BusinessException("版本不能为空");
+        if (version.length() > 255) throw new BusinessException("版本不能超过255个字符");
+        return version;
+    }
+
+    private String normalizeOptionalVersion(String value) {
+        return value == null || value.isBlank() ? null : normalizeVersion(value);
     }
 }

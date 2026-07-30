@@ -6,6 +6,7 @@ import { PageHeader, PageBody } from "@/components/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
@@ -20,39 +21,41 @@ import type { Dictionaries, VersionInvestigation } from "@/lib/types"
 
 export function InvestigationPage() {
   const [dict, setDict] = useState<Dictionaries | null>(null)
-  const [versionId, setVersionId] = useState("")
+  const [versionName, setVersionName] = useState("")
   const [items, setItems] = useState<VersionInvestigation[]>([])
   const [loading, setLoading] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
 
   useEffect(() => {
-    if (!versionId) { setItems([]); return }
+    if (!versionName.trim()) { setItems([]); return }
     setLoading(true)
-    api.get<VersionInvestigation[]>(`/investigations?versionId=${versionId}`)
+    api.get<VersionInvestigation[]>(`/investigations?versionName=${encodeURIComponent(versionName.trim())}`)
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
-  }, [versionId])
+  }, [versionName, refreshKey])
 
   return (
     <>
       <PageHeader
         title="版本排查"
         subtitle="按版本查看待排查问题清单与排查进度"
-        actions={<GenerateDialog dict={dict} defaultVersionId={versionId} onDone={() => versionId && setVersionId(versionId)} />}
+        actions={<GenerateDialog dict={dict} defaultVersionName={versionName} onDone={() => setRefreshKey((value) => value + 1)} />}
       />
       <PageBody className="space-y-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-3">
             <GitBranch className="size-4 text-muted-foreground" />
-            <Select value={versionId} onValueChange={setVersionId}>
-              <SelectTrigger className="w-[240px]"><SelectValue placeholder="选择产品版本" /></SelectTrigger>
-              <SelectContent>
-                {dict?.versions.map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.version}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {versionId && (
+            <Input
+              className="w-[280px]"
+              value={versionName}
+              onChange={(event) => setVersionName(event.target.value)}
+              placeholder="输入要排查的版本"
+              maxLength={255}
+            />
+            {versionName.trim() && (
               <span className="text-sm text-muted-foreground">
                 共 {items.length} 条排查记录，遗留 {items.filter((i) => i.status !== "NO_ISSUE" && i.status !== "FIXED").length} 条
               </span>
@@ -60,7 +63,7 @@ export function InvestigationPage() {
           </CardContent>
         </Card>
 
-        {!versionId ? (
+        {!versionName.trim() ? (
           <div className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
             请选择一个产品版本
           </div>
@@ -97,21 +100,21 @@ export function InvestigationPage() {
 }
 
 function GenerateDialog({
-  dict, defaultVersionId, onDone,
+  dict, defaultVersionName, onDone,
 }: {
-  dict: Dictionaries | null; defaultVersionId: string; onDone: () => void
+  dict: Dictionaries | null; defaultVersionName: string; onDone: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [versionId, setVersionId] = useState(defaultVersionId)
+  const [versionName, setVersionName] = useState(defaultVersionName)
   const [investigatorId, setInvestigatorId] = useState("")
   const [saving, setSaving] = useState(false)
 
   const submit = async () => {
-    if (!versionId) return toast.error("请选择版本")
+    if (!versionName.trim()) return toast.error("请输入版本")
     setSaving(true)
     try {
       const r = await api.post<{ created: number; skipped: number }>("/investigations/generate", {
-        versionId: Number(versionId),
+        versionName: versionName.trim(),
         defaultInvestigatorId: investigatorId ? Number(investigatorId) : undefined,
       })
       toast.success(`已生成 ${r.created} 条排查记录（跳过 ${r.skipped} 条已存在）`)
@@ -124,7 +127,7 @@ function GenerateDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setVersionId(defaultVersionId) }}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setVersionName(defaultVersionName) }}>
       <DialogTrigger asChild>
         <Button size="sm"><Wand2 className="size-4" /> 生成清单</Button>
       </DialogTrigger>
@@ -136,12 +139,8 @@ function GenerateDialog({
         <div className="grid gap-4 py-2">
           <div className="flex flex-col gap-2">
             <Label>产品版本</Label>
-            <Select value={versionId} onValueChange={setVersionId}>
-              <SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger>
-              <SelectContent>
-                {dict?.versions.map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.version}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Input value={versionName} onChange={(event) => setVersionName(event.target.value)}
+              placeholder="输入版本，例如 V500R020C10" maxLength={255} />
           </div>
           <div className="flex flex-col gap-2">
             <Label>默认排查人（可选）</Label>

@@ -60,10 +60,10 @@ public class IssueService {
                 .envInfo(sanitizer.plainText(req.getEnvInfo()))
                 .vpnInfo(sanitizer.plainText(req.getVpnInfo()))
                 .domainId(req.getDomainId())
-                .productId(req.getProductId())
+                .productName(sanitizeOptionalLabel(req.getProductName(), "来源产品"))
                 .submitterId(me.getId())
                 .submitterNo(req.getSubmitterNo() != null ? req.getSubmitterNo() : me.getEmployeeNo())
-                .foundVersionId(req.getFoundVersionId())
+                .foundVersionName(sanitizeOptionalLabel(req.getFoundVersionName(), "发现版本"))
                 .priority(normalizePriority(req.getPriority()))
                 .status(IssueStatus.PENDING_ASSIGN)
                 .collaboratorIds("")
@@ -90,8 +90,12 @@ public class IssueService {
         if (req.getEnvInfo() != null) issue.setEnvInfo(sanitizer.plainText(req.getEnvInfo()));
         if (req.getVpnInfo() != null) issue.setVpnInfo(sanitizer.plainText(req.getVpnInfo()));
         if (req.getDomainId() != null) issue.setDomainId(req.getDomainId());
-        if (req.getProductId() != null) issue.setProductId(req.getProductId());
-        if (req.getFoundVersionId() != null) issue.setFoundVersionId(req.getFoundVersionId());
+        if (req.getProductName() != null) {
+            issue.setProductName(sanitizeOptionalLabel(req.getProductName(), "来源产品"));
+        }
+        if (req.getFoundVersionName() != null) {
+            issue.setFoundVersionName(sanitizeOptionalLabel(req.getFoundVersionName(), "发现版本"));
+        }
         if (req.getPriority() != null) issue.setPriority(normalizePriority(req.getPriority()));
         issueMapper.updateById(issue);
         return toVo(issue);
@@ -114,21 +118,28 @@ public class IssueService {
             wrapper.and(w -> w.like(Issue::getCode, keyword)
                     .or().like(Issue::getTitle, keyword)
                     .or().like(Issue::getDescription, keyword)
-                    .or().like(Issue::getSearchKeywords, keyword));
+                    .or().like(Issue::getSearchKeywords, keyword)
+                    .or().like(Issue::getProductName, keyword)
+                    .or().like(Issue::getFoundVersionName, keyword)
+                    .or().like(Issue::getEnvInfo, keyword)
+                    .or().like(Issue::getVpnInfo, keyword));
         }
         wrapper.eq(q.getModuleId() != null, Issue::getModuleId, q.getModuleId())
-                .eq(q.getProductId() != null, Issue::getProductId, q.getProductId())
+                .like(q.getProductName() != null && !q.getProductName().isBlank(),
+                        Issue::getProductName, q.getProductName() == null ? null : q.getProductName().trim())
                 .eq(q.getDomainId() != null, Issue::getDomainId, q.getDomainId())
                 .eq(q.getStatus() != null && !q.getStatus().isBlank(), Issue::getStatus, q.getStatus())
                 .eq(q.getSubmitterId() != null, Issue::getSubmitterId, q.getSubmitterId())
                 .eq(q.getAssigneeId() != null, Issue::getAssigneeId, q.getAssigneeId())
-                .eq(q.getFoundVersionId() != null, Issue::getFoundVersionId, q.getFoundVersionId())
+                .like(q.getFoundVersionName() != null && !q.getFoundVersionName().isBlank(),
+                        Issue::getFoundVersionName,
+                        q.getFoundVersionName() == null ? null : q.getFoundVersionName().trim())
                 .ge(q.getCreatedFrom() != null, Issue::getCreatedAt, q.getCreatedFrom())
                 .le(q.getCreatedTo() != null, Issue::getCreatedAt, q.getCreatedTo())
-                .apply(q.getInvestigateVersionId() != null,
+                .apply(q.getInvestigateVersionName() != null && !q.getInvestigateVersionName().isBlank(),
                         "EXISTS (SELECT 1 FROM version_investigation vi " +
-                                "WHERE vi.issue_id = issue.id AND vi.version_id = {0})",
-                        q.getInvestigateVersionId())
+                                "WHERE vi.issue_id = issue.id AND vi.version_name = {0})",
+                        q.getInvestigateVersionName())
                 .orderByDesc(Issue::getCreatedAt);
         return wrapper;
     }
@@ -510,6 +521,14 @@ public class IssueService {
         return title;
     }
 
+    private String sanitizeOptionalLabel(String rawValue, String fieldName) {
+        String value = sanitizer.plainText(rawValue);
+        if (value == null || value.isBlank()) return null;
+        value = value.trim();
+        if (value.length() > 255) throw new BusinessException(fieldName + "不能超过255个字符");
+        return value;
+    }
+
     private String normalizePriority(String rawPriority) {
         String priority = rawPriority == null || rawPriority.isBlank()
                 ? customization.getIssue().getDefaultPriority()
@@ -563,12 +582,14 @@ public class IssueService {
             vo.setDomainId(i.getDomainId());
             vo.setDomainName(lookup.domainName(i.getDomainId()));
             vo.setProductId(i.getProductId());
-            vo.setProductName(safeGet(productMap, i.getProductId()));
+            vo.setProductName(i.getProductName() != null && !i.getProductName().isBlank()
+                    ? i.getProductName() : safeGet(productMap, i.getProductId()));
             vo.setSubmitterId(i.getSubmitterId());
             vo.setSubmitterName(safeGet(userMap, i.getSubmitterId()));
             vo.setSubmitterNo(i.getSubmitterNo());
             vo.setFoundVersionId(i.getFoundVersionId());
-            vo.setFoundVersionName(safeGet(versionMap, i.getFoundVersionId()));
+            vo.setFoundVersionName(i.getFoundVersionName() != null && !i.getFoundVersionName().isBlank()
+                    ? i.getFoundVersionName() : safeGet(versionMap, i.getFoundVersionId()));
             vo.setPriority(i.getPriority());
             vo.setStatus(i.getStatus());
             vo.setAssigneeId(i.getAssigneeId());

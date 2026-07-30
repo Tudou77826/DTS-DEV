@@ -114,10 +114,6 @@ dts:
           placeholder: 详细描述问题现象、复现步骤、日志与上下文…
           required: true
           visible: true
-        searchKeywords:
-          label: 查询关键字
-          placeholder: 文件 Hash、错误码、基线名称、导入时间等检索信息
-          visible: true
         module:
           label: 所属模块
           placeholder: 选择模块
@@ -125,7 +121,7 @@ dts:
           visible: true
         product:
           label: 来源产品
-          placeholder: 选择产品
+          placeholder: 输入产品名称，例如 HiSec
           visible: true
         domain:
           label: 问题领域
@@ -133,7 +129,7 @@ dts:
           visible: true
         foundVersion:
           label: 发现版本
-          placeholder: 选择版本
+          placeholder: 输入版本号，例如 V500R020C10
           visible: true
         priority:
           label: 优先级
@@ -196,17 +192,7 @@ dts:
           team: network-security
           avatar-color: "#8b5cf6"
           active: true
-      products:
-        - key: hisec
-          name: HiSec
-          description: 安全网关产品
-          modules: [入侵检测, 流量清洗, 日志审计]
-          versions: [V500R020C00, V500R020C10, V500R021C00]
-        - key: secospace
-          name: SecoSpace
-          description: 安全管理平台
-          modules: [策略下发]
-          versions: [V200R001C00]
+      modules: [入侵检测, 流量清洗, 日志审计, 策略下发]
       domains:
         - name: 功能缺陷
         - name: 性能问题

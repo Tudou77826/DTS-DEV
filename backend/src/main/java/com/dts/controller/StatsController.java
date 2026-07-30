@@ -22,7 +22,7 @@ public class StatsController {
     }
 
     @GetMapping("/version-remain")
-    public ApiResponse<Map<Long, Long>> versionRemain() {
+    public ApiResponse<Map<String, Long>> versionRemain() {
         return ApiResponse.ok(statsService.versionRemainCount());
     }
 }

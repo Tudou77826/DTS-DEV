@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Plus, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import { INVESTIGATION_STATUS_META, formatDateTime } from "@/lib/labels"
-import type { Dictionaries, VersionInvestigation } from "@/lib/types"
+import type { VersionInvestigation } from "@/lib/types"
 
 const INVESTIGATION_STATUSES = Object.keys(INVESTIGATION_STATUS_META)
 
@@ -25,12 +25,6 @@ export function InvestigationPanel({
 }: {
   issueId: number; items: VersionInvestigation[]; onChanged: () => void
 }) {
-  const [dict, setDict] = useState<Dictionaries | null>(null)
-  useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
-
-  const versionName = (id?: number) =>
-    id ? dict?.versions.find((v) => v.id === id)?.version : undefined
-
   return (
     <Card>
       <CardContent className="p-0">
@@ -47,7 +41,7 @@ export function InvestigationPanel({
               return (
                 <div key={inv.id} className="px-5 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{versionName(inv.versionId)}</span>
+                    <span className="text-sm font-medium">{inv.versionName}</span>
                     <Badge variant="secondary" className={meta.className}>{meta.label}</Badge>
                     {inv.completedAt && (
                       <span className="text-xs text-muted-foreground">{formatDateTime(inv.completedAt)} 完成</span>
@@ -74,24 +68,21 @@ export function InvestigationPanel({
 }
 
 function AddInvestigation({ issueId, onChanged }: { issueId: number; onChanged: () => void }) {
-  const [dict, setDict] = useState<Dictionaries | null>(null)
   const [open, setOpen] = useState(false)
-  const [versionId, setVersionId] = useState("")
+  const [versionName, setVersionName] = useState("")
   const [status, setStatus] = useState("PENDING")
   const [result, setResult] = useState("")
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [open])
-
   const submit = async () => {
-    if (!versionId) return toast.error("请选择版本")
+    if (!versionName.trim()) return toast.error("请输入版本")
     setSaving(true)
     try {
       await api.post("/investigations", {
-        issueId, versionId: Number(versionId), status, result: result || undefined,
+        issueId, versionName: versionName.trim(), status, result: result || undefined,
       })
       toast.success("已添加排查记录")
-      setVersionId(""); setResult(""); setStatus("PENDING"); setOpen(false)
+      setVersionName(""); setResult(""); setStatus("PENDING"); setOpen(false)
       onChanged()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "操作失败")
@@ -110,12 +101,8 @@ function AddInvestigation({ issueId, onChanged }: { issueId: number; onChanged: 
         <div className="grid gap-4 py-2">
           <div className="flex flex-col gap-2">
             <Label>产品版本</Label>
-            <Select value={versionId} onValueChange={setVersionId}>
-              <SelectTrigger><SelectValue placeholder="选择版本" /></SelectTrigger>
-              <SelectContent>
-                {dict?.versions.map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.version}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Input value={versionName} onChange={(event) => setVersionName(event.target.value)}
+              placeholder="输入需要排查的版本" maxLength={255} />
           </div>
           <div className="flex flex-col gap-2">
             <Label>排查状态</Label>
@@ -143,20 +130,17 @@ function AddInvestigation({ issueId, onChanged }: { issueId: number; onChanged: 
 }
 
 function EditInvestigation({ inv, onChanged }: { inv: VersionInvestigation; onChanged: () => void }) {
-  const [dict, setDict] = useState<Dictionaries | null>(null)
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(inv.status)
   const [result, setResult] = useState(inv.result || "")
   const [handlingNote, setHandlingNote] = useState(inv.handlingNote || "")
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { if (open) api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [open])
-
   const submit = async () => {
     setSaving(true)
     try {
       await api.put(`/investigations/${inv.id}`, {
-        issueId: inv.issueId, versionId: inv.versionId, status,
+        issueId: inv.issueId, versionName: inv.versionName, status,
         result: result || undefined, handlingNote: handlingNote || undefined,
       })
       toast.success("已更新")

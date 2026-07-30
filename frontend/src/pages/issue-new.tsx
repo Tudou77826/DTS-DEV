@@ -24,12 +24,11 @@ export function IssueNewPage() {
     moduleId: "",
     title: "",
     description: "",
-    searchKeywords: "",
     envInfo: "",
     vpnInfo: "",
     domainId: "",
-    productId: "",
-    foundVersionId: "",
+    productName: "",
+    foundVersionName: "",
     priority: "" as Priority,
   })
 
@@ -56,12 +55,11 @@ export function IssueNewPage() {
         moduleId: Number(form.moduleId),
         title: form.title.trim(),
         description: form.description,
-        searchKeywords: form.searchKeywords || undefined,
         envInfo: form.envInfo || undefined,
         vpnInfo: form.vpnInfo || undefined,
         domainId: form.domainId ? Number(form.domainId) : undefined,
-        productId: form.productId ? Number(form.productId) : undefined,
-        foundVersionId: form.foundVersionId ? Number(form.foundVersionId) : undefined,
+        productName: form.productName.trim() || undefined,
+        foundVersionName: form.foundVersionName.trim() || undefined,
         priority: form.priority,
       })
       toast.success("问题已创建")
@@ -112,31 +110,21 @@ export function IssueNewPage() {
                     rows={8}
                   />}
             </ConfiguredField>
-            <ConfiguredField config={field("searchKeywords")} className="col-span-2">
-              <Input
-                value={form.searchKeywords}
-                onChange={(e) => set("searchKeywords", e.target.value)}
-                placeholder={field("searchKeywords")?.placeholder}
-              />
-            </ConfiguredField>
-
             <ConfiguredField config={field("module")}>
               <Select value={form.moduleId} onValueChange={(v) => set("moduleId", v)}>
                 <SelectTrigger><SelectValue placeholder={field("module")?.placeholder} /></SelectTrigger>
                 <SelectContent>
-                  {dict?.modules
-                    .filter((m) => !form.productId || m.productId === Number(form.productId))
-                    .map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                  {dict?.modules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </ConfiguredField>
             <ConfiguredField config={field("product")}>
-              <Select value={form.productId} onValueChange={(v) => { set("productId", v); set("moduleId", ""); set("foundVersionId", "") }}>
-                <SelectTrigger><SelectValue placeholder={field("product")?.placeholder} /></SelectTrigger>
-                <SelectContent>
-                  {dict?.products.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input
+                value={form.productName}
+                onChange={(event) => set("productName", event.target.value)}
+                placeholder={field("product")?.placeholder || "输入产品名称"}
+                maxLength={255}
+              />
             </ConfiguredField>
             <ConfiguredField config={field("domain")}>
               <Select value={form.domainId} onValueChange={(v) => set("domainId", v)}>
@@ -147,14 +135,12 @@ export function IssueNewPage() {
               </Select>
             </ConfiguredField>
             <ConfiguredField config={field("foundVersion")}>
-              <Select value={form.foundVersionId} onValueChange={(v) => set("foundVersionId", v)}>
-                <SelectTrigger><SelectValue placeholder={field("foundVersion")?.placeholder} /></SelectTrigger>
-                <SelectContent>
-                  {dict?.versions
-                    .filter((v) => !form.productId || v.productId === Number(form.productId))
-                    .map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.version}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input
+                value={form.foundVersionName}
+                onChange={(event) => set("foundVersionName", event.target.value)}
+                placeholder={field("foundVersion")?.placeholder || "输入版本号"}
+                maxLength={255}
+              />
             </ConfiguredField>
             <ConfiguredField config={field("priority")}>
               <Select value={form.priority} onValueChange={(v) => set("priority", v)}>

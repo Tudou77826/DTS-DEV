@@ -128,9 +128,7 @@ public class ConfigService {
                 "users", listUsers(),
                 "developers", listDevelopers(),
                 "teams", listTeams(),
-                "products", listProducts(),
                 "modules", listModules(null),
-                "versions", listVersions(null),
                 "domains", listDomains(),
                 "customization", customization);
     }

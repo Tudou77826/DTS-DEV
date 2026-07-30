@@ -21,10 +21,10 @@ public class InvestigationController {
 
     @GetMapping
     public ApiResponse<List<VersionInvestigation>> listByIssue(@RequestParam(required = false) Long issueId,
-                                                               @RequestParam(required = false) Long versionId) {
+                                                               @RequestParam(required = false) String versionName) {
         featureGuard.requireEnabled("investigations", "版本排查");
-        if (versionId != null) {
-            return ApiResponse.ok(investigationService.listByVersion(versionId));
+        if (versionName != null && !versionName.isBlank()) {
+            return ApiResponse.ok(investigationService.listByVersion(versionName));
         }
         if (issueId != null) {
             return ApiResponse.ok(investigationService.listByIssue(issueId));

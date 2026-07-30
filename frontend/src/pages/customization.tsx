@@ -557,38 +557,27 @@ function CsvUserImport({ value, onImport }: {
 function MasterDataPanel({ value, onChange }: EditorProps) {
   const master = value.masterData
   const setMaster = (next: DtsCustomization["masterData"]) => onChange({ ...value, masterData: next })
-  const updateProduct = (index: number, patch: Partial<DtsCustomization["masterData"]["products"][number]>) => {
-    const products = [...master.products]
-    products[index] = { ...products[index], ...patch }
-    setMaster({ ...master, products })
-  }
   return (
     <>
-      <Section title="产品、模块与版本" description="每个产品维护自己的模块和版本；多个值用逗号分隔。">
-        <div className="space-y-3">
-          {master.products.map((product, index) => (
-            <div key={`${product.key}-${index}`} className="rounded-lg border border-border p-4">
-              <div className="grid gap-3 md:grid-cols-[180px_1fr_1fr_auto]">
-                <TextField label="系统标识" value={product.key} onChange={(v) => updateProduct(index, { key: v })} mono />
-                <TextField label="产品名称" value={product.name} onChange={(v) => updateProduct(index, { name: v })} />
-                <TextField label="产品说明" value={product.description || ""} onChange={(v) => updateProduct(index, { description: v })} />
-                <Button variant="ghost" size="icon" className="mt-6" title="删除产品" onClick={() =>
-                  setMaster({ ...master, products: master.products.filter((_, i) => i !== index) })}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <TextField label="模块（逗号分隔）" value={product.modules.join(", ")}
-                  onChange={(v) => updateProduct(index, { modules: splitValues(v) })} />
-                <TextField label="版本（逗号分隔）" value={product.versions.join(", ")}
-                  onChange={(v) => updateProduct(index, { versions: splitValues(v) })} mono />
-              </div>
+      <Section title="模块" description="产品和版本由问题填写者直接输入；这里只维护需要统一口径的模块。">
+        <div className="flex flex-wrap gap-2">
+          {master.modules.map((module, index) => (
+            <div key={`${module}-${index}`} className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
+              <Input className="h-8 w-44 border-0 shadow-none" value={module} onChange={(event) => {
+                const modules = [...master.modules]
+                modules[index] = event.target.value
+                setMaster({ ...master, modules })
+              }} />
+              <Button variant="ghost" size="icon-sm" onClick={() =>
+                setMaster({ ...master, modules: master.modules.filter((_, i) => i !== index) })}>
+                <Trash2 className="size-3.5 text-muted-foreground" />
+              </Button>
             </div>
           ))}
-          <Button variant="outline" onClick={() => setMaster({
-            ...master,
-            products: [...master.products, { key: `product-${master.products.length + 1}`, name: "新产品", modules: [], versions: [] }],
-          })}><Plus className="size-4" /> 添加产品</Button>
+          <Button variant="outline" size="sm" className="h-10" onClick={() =>
+            setMaster({ ...master, modules: [...master.modules, "新模块"] })}>
+            <Plus className="size-4" /> 添加模块
+          </Button>
         </div>
       </Section>
       <Section title="问题领域" description="维护团队使用的问题分类。">
@@ -741,8 +730,6 @@ interface EditorProps {
   value: DtsCustomization
   onChange: (value: DtsCustomization) => void
 }
-
-const splitValues = (value: string) => value.split(/[,，]/).map((item) => item.trim()).filter(Boolean)
 
 type ConfigUser = DtsCustomization["masterData"]["users"][number]
 

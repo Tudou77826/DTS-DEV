@@ -26,9 +26,7 @@ export interface User {
   active?: boolean
 }
 
-export interface Product { id: number; name: string; description?: string; active?: boolean }
 export interface ProductModule { id: number; productId?: number; name: string; description?: string; active?: boolean }
-export interface ProductVersion { id: number; productId?: number; version: string; description?: string; active?: boolean }
 export interface IssueDomain { id: number; name: string; description?: string }
 export interface Team { id: number; name: string; description?: string }
 
@@ -36,9 +34,7 @@ export interface Dictionaries {
   users: User[]
   developers: User[]
   teams: Team[]
-  products: Product[]
   modules: ProductModule[]
-  versions: ProductVersion[]
   domains: IssueDomain[]
   customization: DtsCustomization
 }
@@ -82,7 +78,7 @@ export interface DtsCustomization {
     priorities: Array<{ value: Priority; label: string; color?: string }>
     statuses: Array<{ value: IssueStatus; label: string; color?: string }>
     fields: Record<
-      "title" | "description" | "searchKeywords" | "module" | "product" | "domain" |
+      "title" | "description" | "module" | "product" | "domain" |
       "foundVersion" | "priority" | "vpnInfo" | "envInfo",
       IssueFormFieldConfig
     >
@@ -104,13 +100,7 @@ export interface DtsCustomization {
       avatarColor?: string
       active: boolean
     }>
-    products: Array<{
-      key: string
-      name: string
-      description?: string
-      modules: string[]
-      versions: string[]
-    }>
+    modules: string[]
     domains: Array<{ name: string; description?: string }>
   }
   features: Record<string, boolean>
@@ -140,12 +130,10 @@ export interface Issue {
   vpnInfo?: string
   domainId?: number
   domainName?: string
-  productId?: number
   productName?: string
   submitterId: number
   submitterName?: string
   submitterNo?: string
-  foundVersionId?: number
   foundVersionName?: string
   priority: Priority
   status: IssueStatus
@@ -199,12 +187,12 @@ export interface OperationLog {
 export interface VersionInvestigation {
   id: number
   issueId: number
-  versionId: number
+  versionName: string
   investigatorId?: number
   status: string
   result?: string
   handlingNote?: string
-  fixVersionId?: number
+  fixVersionName?: string
   verifyResult?: string
   completedAt?: string
   createdAt: string

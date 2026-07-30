@@ -27,6 +27,9 @@ public class VersionInvestigation extends BaseEntity {
     /** 产品版本 ID */
     private Long versionId;
 
+    /** 排查版本（自由文本） */
+    private String versionName;
+
     /** 排查负责人 ID */
     private Long investigatorId;
 
@@ -41,6 +44,9 @@ public class VersionInvestigation extends BaseEntity {
 
     /** 修复版本 ID（如已修复） */
     private Long fixVersionId;
+
+    /** 修复版本（自由文本） */
+    private String fixVersionName;
 
     /** 验证结果 */
     private String verifyResult;

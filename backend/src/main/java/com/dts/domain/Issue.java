@@ -55,6 +55,9 @@ public class Issue extends BaseEntity {
     /** 来源产品 ID */
     private Long productId;
 
+    /** 来源产品名称（自由文本） */
+    private String productName;
+
     /** 提出人 ID */
     private Long submitterId;
 
@@ -63,6 +66,9 @@ public class Issue extends BaseEntity {
 
     /** 发现版本 ID */
     private Long foundVersionId;
+
+    /** 发现版本（自由文本） */
+    private String foundVersionName;
 
     /** 优先级：LOW / MEDIUM / HIGH / URGENT */
     private String priority;

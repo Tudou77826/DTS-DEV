@@ -22,9 +22,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserMapper userMapper;
     private final TeamMapper teamMapper;
-    private final ProductMapper productMapper;
     private final ModuleMapper moduleMapper;
-    private final ProductVersionMapper versionMapper;
     private final IssueDomainMapper domainMapper;
     private final PasswordEncoder passwordEncoder;
     private final DtsCustomizationProperties customization;
@@ -93,39 +91,12 @@ public class DataInitializer implements CommandLineRunner {
      * 不删除管理员在页面中维护的其他数据。
      */
     private void syncIssueFormOptions() {
-        for (DtsCustomizationProperties.ProductOption configured : customization.getMasterData().getProducts()) {
-            Product product = productMapper.selectOne(
-                    com.baomidou.mybatisplus.core.toolkit.Wrappers.<Product>lambdaQuery()
-                            .eq(Product::getName, configured.getName()).last("LIMIT 1"));
-            if (product == null) {
-                product = insert(productMapper, Product.builder()
-                        .name(configured.getName())
-                        .description(configured.getDescription())
-                        .active(true)
-                        .build());
-            } else {
-                product.setDescription(configured.getDescription());
-                product.setActive(true);
-                productMapper.updateById(product);
-            }
-            final Long productId = product.getId();
-            for (String moduleName : configured.getModules()) {
-                if (moduleMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ProductModule>lambdaQuery()
-                        .eq(ProductModule::getProductId, productId)
-                        .eq(ProductModule::getName, moduleName)) == 0) {
-                    insert(moduleMapper, ProductModule.builder()
-                            .productId(productId).name(moduleName).active(true).build());
-                }
-            }
-            for (String versionName : configured.getVersions()) {
-                if (versionMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ProductVersion>lambdaQuery()
-                        .eq(ProductVersion::getProductId, productId)
-                        .eq(ProductVersion::getVersion, versionName)) == 0) {
-                    insert(versionMapper, ProductVersion.builder()
-                            .productId(productId).version(versionName).active(true).build());
-                }
+        for (String moduleName : customization.getMasterData().getModules()) {
+            if (moduleMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ProductModule>lambdaQuery()
+                    .eq(ProductModule::getName, moduleName)) == 0) {
+                insert(moduleMapper, ProductModule.builder()
+                        .name(moduleName).active(true).build());
             }
         }
         for (DtsCustomizationProperties.DomainOption configured : customization.getMasterData().getDomains()) {

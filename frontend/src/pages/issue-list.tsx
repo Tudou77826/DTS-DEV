@@ -41,9 +41,9 @@ export function IssueListPage() {
   const keyword = searchParams.get("keyword") || ""
   const status = searchParams.get("status") || ""
   const moduleId = searchParams.get("moduleId") || ""
-  const productId = searchParams.get("productId") || ""
+  const productName = searchParams.get("productName") || ""
   const assigneeId = searchParams.get("assigneeId") || ""
-  const foundVersionId = searchParams.get("foundVersionId") || ""
+  const foundVersionName = searchParams.get("foundVersionName") || ""
   const page = parseInt(searchParams.get("page") || "1")
   const overdueOnly = searchParams.get("overdue") === "1"
 
@@ -64,9 +64,9 @@ export function IssueListPage() {
       if (keyword) params.set("keyword", keyword)
       if (status) params.set("status", status)
       if (moduleId) params.set("moduleId", moduleId)
-      if (productId) params.set("productId", productId)
+      if (productName) params.set("productName", productName)
       if (assigneeId) params.set("assigneeId", assigneeId)
-      if (foundVersionId) params.set("foundVersionId", foundVersionId)
+      if (foundVersionName) params.set("foundVersionName", foundVersionName)
       const result = await api.get<PageResult<Issue>>(`/issues?${params.toString()}`)
       let list = result.list
       if (overdueOnly) list = list.filter((i) => i.overdue)
@@ -75,7 +75,7 @@ export function IssueListPage() {
     } finally {
       setLoading(false)
     }
-  }, [keyword, status, moduleId, productId, assigneeId, foundVersionId, page, overdueOnly])
+  }, [keyword, status, moduleId, productName, assigneeId, foundVersionName, page, overdueOnly])
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
   useEffect(() => { load() }, [load])
@@ -87,9 +87,9 @@ export function IssueListPage() {
     if (keyword) params.set("keyword", keyword)
     if (status) params.set("status", status)
     if (moduleId) params.set("moduleId", moduleId)
-    if (productId) params.set("productId", productId)
+    if (productName) params.set("productName", productName)
     if (assigneeId) params.set("assigneeId", assigneeId)
-    if (foundVersionId) params.set("foundVersionId", foundVersionId)
+    if (foundVersionName) params.set("foundVersionName", foundVersionName)
     return params
   }
 
@@ -152,22 +152,25 @@ export function IssueListPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={productId} onValueChange={(v) => update({ productId: v === "ALL" ? "" : v, moduleId: null, page: null })}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="产品" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">全部产品</SelectItem>
-                {dict?.products.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Input
+              className="w-[145px]"
+              value={productName}
+              onChange={(event) => update({ productName: event.target.value, page: null })}
+              placeholder="产品名称"
+            />
             <Select value={moduleId} onValueChange={(v) => update({ moduleId: v === "ALL" ? "" : v, page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="模块" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部模块</SelectItem>
-                {dict?.modules
-                  .filter((m) => !productId || m.productId === Number(productId))
-                  .map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                {dict?.modules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Input
+              className="w-[155px]"
+              value={foundVersionName}
+              onChange={(event) => update({ foundVersionName: event.target.value, page: null })}
+              placeholder="发现版本"
+            />
             <Select value={assigneeId} onValueChange={(v) => update({ assigneeId: v === "ALL" ? "" : v, page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="责任人" /></SelectTrigger>
               <SelectContent>

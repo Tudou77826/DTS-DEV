@@ -92,15 +92,6 @@ public class DtsCustomizationProperties {
     }
 
     @Data
-    public static class ProductOption {
-        private String key;
-        private String name;
-        private String description;
-        private List<String> modules = new ArrayList<>();
-        private List<String> versions = new ArrayList<>();
-    }
-
-    @Data
     public static class DomainOption {
         private String name;
         private String description;
@@ -129,7 +120,7 @@ public class DtsCustomizationProperties {
         private String syncMode = "merge";
         private List<TeamOption> teams = new ArrayList<>();
         private List<UserOption> users = new ArrayList<>();
-        private List<ProductOption> products = new ArrayList<>();
+        private List<String> modules = new ArrayList<>();
         private List<DomainOption> domains = new ArrayList<>();
     }
 }

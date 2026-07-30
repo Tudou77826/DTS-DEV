@@ -23,9 +23,9 @@ public class IssueDtos {
         private String envInfo;
         private String vpnInfo;
         private Long domainId;
-        private Long productId;
+        private String productName;
         private String submitterNo;
-        private Long foundVersionId;
+        private String foundVersionName;
         /** 优先级技术值；为空时使用当前接入配置的默认优先级。 */
         private String priority;
     }
@@ -35,13 +35,13 @@ public class IssueDtos {
     public static class IssueQuery {
         public String keyword;        // 编号或关键字
         public Long moduleId;
-        public Long productId;
+        public String productName;
         public Long domainId;
         public String status;
         public Long submitterId;
         public Long assigneeId;
-        public Long foundVersionId;
-        public Long investigateVersionId;
+        public String foundVersionName;
+        public String investigateVersionName;
         public LocalDateTime createdFrom;
         public LocalDateTime createdTo;
         public int page = 1;
