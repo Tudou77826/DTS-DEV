@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { useParams, useNavigate, Link } from "react-router-dom"
+import { ArrowLeft, Loader2, Pencil } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
@@ -89,6 +89,11 @@ export function IssueDetailPage() {
           <>
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
               <ArrowLeft className="size-4" /> 返回
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/issues/${issue.id}/edit`}>
+                <Pencil className="size-4" /> 编辑
+              </Link>
             </Button>
             <IssueActions issue={issue} onChanged={load} />
           </>

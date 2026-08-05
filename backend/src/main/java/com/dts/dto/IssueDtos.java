@@ -44,6 +44,8 @@ public class IssueDtos {
         public String investigateVersionName;
         public LocalDateTime createdFrom;
         public LocalDateTime createdTo;
+        /** 为 true 时仅返回已超期（超过计划完成时间且仍处于活动状态）的问题 */
+        public boolean overdue;
         public int page = 1;
         public int size = 20;
     }

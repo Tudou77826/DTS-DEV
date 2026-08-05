@@ -5,6 +5,7 @@ import com.dts.config.DtsCustomizationProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,19 @@ public class CustomizationAdminService {
     private String externalFile;
 
     private final ObjectMapper objectMapper;
+    private final DtsCustomizationProperties customization;
+
+    /**
+     * 供公开端点 {@code GET /config/customization} 使用的脱敏视图：
+     * 深拷贝当前配置并整体移除管理员节点（含密码哈希），避免泄露给未授权方。
+     * 注意不能直接在原对象上置空（配置对象为单例）。
+     */
+    public DtsCustomizationProperties publicView() {
+        DtsCustomizationProperties copy = new DtsCustomizationProperties();
+        BeanUtils.copyProperties(customization, copy);
+        copy.setAdmin(null);
+        return copy;
+    }
 
     public ConfigFileView read() {
         Path external = externalPath();

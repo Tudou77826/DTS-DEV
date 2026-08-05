@@ -41,6 +41,7 @@ public class IssueService {
     private final NotificationService notificationService;
     private final ContentSanitizer sanitizer;
     private final DtsCustomizationProperties customization;
+    private final FeatureGuard featureGuard;
 
     // ───────────────────────── 创建/编辑 ─────────────────────────
 
@@ -48,10 +49,9 @@ public class IssueService {
     public IssueVo create(IssueDtos.IssueSaveRequest req) {
         LoginUser me = SecurityUtil.current();
         String title = sanitizeTitle(req.getTitle());
-        String description = sanitizer.richText(req.getDescription());
+        String description = sanitizeDescription(req.getDescription());
         if (!sanitizer.hasText(description)) throw new BusinessException("问题描述不能为空");
         Issue issue = Issue.builder()
-                .code(generateCode())
                 .raisedAt(LocalDateTime.now())
                 .moduleId(req.getModuleId())
                 .title(title)
@@ -68,10 +68,28 @@ public class IssueService {
                 .status(IssueStatus.PENDING_ASSIGN)
                 .collaboratorIds("")
                 .build();
-        issueMapper.insert(issue);
+        insertWithCodeRetry(issue);
 
         logOperation(issue.getId(), me.getId(), "CREATE", "status", null, IssueStatus.PENDING_ASSIGN, "创建问题");
         return toVo(issue);
+    }
+
+    /**
+     * 插入问题并生成唯一编号。编号由「日期前缀 + 当日最大序号 + 1」计算，
+     * 并发创建时可能碰撞唯一索引 uk_issue_code，这里在冲突时重新取号重试。
+     */
+    private void insertWithCodeRetry(Issue issue) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            issue.setCode(generateCode());
+            try {
+                issueMapper.insert(issue);
+                return;
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 编号冲突：清空 id（insert 失败后自增主键可能已占用），重试下一个序号
+                issue.setId(null);
+            }
+        }
+        throw new BusinessException("生成问题编号失败，请重试");
     }
 
     @Transactional
@@ -82,7 +100,7 @@ public class IssueService {
         permissionService.requireParticipantOrLeader(issue);
         if (req.getTitle() != null) issue.setTitle(sanitizeTitle(req.getTitle()));
         if (req.getDescription() != null) {
-            String description = sanitizer.richText(req.getDescription());
+            String description = sanitizeDescription(req.getDescription());
             if (!sanitizer.hasText(description)) throw new BusinessException("问题描述不能为空");
             issue.setDescription(description);
         }
@@ -140,6 +158,10 @@ public class IssueService {
                         "EXISTS (SELECT 1 FROM version_investigation vi " +
                                 "WHERE vi.issue_id = issue.id AND vi.version_name = {0})",
                         q.getInvestigateVersionName())
+                .apply(q.isOverdue(),
+                        "issue.plan_finish_at IS NOT NULL AND issue.plan_finish_at < {0}",
+                        LocalDateTime.now())
+                .in(q.isOverdue(), Issue::getStatus, IssueStatus.ACTIVE)
                 .orderByDesc(Issue::getCreatedAt);
         return wrapper;
     }
@@ -378,16 +400,31 @@ public class IssueService {
         return batchResult(succeeded, errors);
     }
 
+    /**
+     * 批量关闭（项目负责人专属）：与单条关闭「仅提出人可关」不同，这是负责人治理已解决问题的手段。
+     * 逐条校验流转合法性后置为已关闭，部分失败不影响其余问题。
+     */
     @Transactional
     public FeatureDtos.BatchResult batchClose(FeatureDtos.BatchCloseRequest request) {
+        permissionService.requireLeader();
+        LoginUser me = SecurityUtil.current();
         List<String> errors = new ArrayList<>();
         int succeeded = 0;
         for (Long issueId : new LinkedHashSet<>(request.getIssueIds())) {
             try {
-                IssueDtos.StatusChangeRequest status = new IssueDtos.StatusChangeRequest();
-                status.setStatus(IssueStatus.CLOSED);
-                status.setRemark(request.getRemark());
-                changeStatus(issueId, status);
+                Issue issue = require(issueId);
+                if (!customization.getIssue().getTransitions()
+                        .getOrDefault(issue.getStatus(), List.of()).contains(IssueStatus.CLOSED)) {
+                    throw new BusinessException("不允许从 " + issue.getStatus() + " 流转到已关闭");
+                }
+                if (issue.getAssigneeId() == null) {
+                    throw new BusinessException("尚未指定责任人，无法关闭");
+                }
+                applyStatus(issue, IssueStatus.CLOSED, me.getId(), request.getRemark());
+                issueMapper.updateById(issue);
+                notificationService.notifyUsers(List.of(issue.getSubmitterId(), issue.getAssigneeId()),
+                        "STATUS", "问题已关闭：" + issue.getCode(), issue.getStatus(),
+                        "/issues/" + issue.getId());
                 succeeded++;
             } catch (BusinessException e) {
                 errors.add(issueId + ": " + e.getMessage());
@@ -432,6 +469,9 @@ public class IssueService {
                 .ge(Issue::getCreatedAt, LocalDateTime.now().toLocalDate().atStartOfDay())));
         m.put("overdue", (long) issueMapper.findOverdue(LocalDateTime.now()).stream()
                 .filter(i -> me.getId().equals(i.getAssigneeId())).count());
+        m.put("resolved", issueMapper.selectCount(new LambdaQueryWrapper<Issue>()
+                .eq(Issue::getAssigneeId, me.getId())
+                .in(Issue::getStatus, IssueStatus.TERMINAL)));
         return m;
     }
 
@@ -519,6 +559,16 @@ public class IssueService {
         if (title == null || title.isBlank()) throw new BusinessException("问题标题不能为空");
         if (title.length() > 255) throw new BusinessException("问题标题不能超过255个字符");
         return title;
+    }
+
+    /**
+     * 按接入配置的 rich-text 开关清洗问题描述：
+     * 开启时保留富文本（白名单清洗），关闭时仅保留纯文本，与前端编辑器保持一致。
+     */
+    private String sanitizeDescription(String rawDescription) {
+        return featureGuard.enabled("rich-text")
+                ? sanitizer.richText(rawDescription)
+                : sanitizer.plainText(rawDescription);
     }
 
     private String sanitizeOptionalLabel(String rawValue, String fieldName) {

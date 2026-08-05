@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
@@ -18,12 +18,16 @@ import { htmlToText } from "@/lib/utils"
 
 export function IssueNewPage() {
   const navigate = useNavigate()
+  const { id: editId } = useParams<{ id?: string }>()
+  const isEdit = Boolean(editId)
   const [dict, setDict] = useState<Dictionaries | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(isEdit)
   const [form, setForm] = useState({
     moduleId: "",
     title: "",
     description: "",
+    searchKeywords: "",
     envInfo: "",
     vpnInfo: "",
     domainId: "",
@@ -39,6 +43,24 @@ export function IssueNewPage() {
     })
   }, [])
 
+  useEffect(() => {
+    if (!isEdit || !editId) return
+    api.get<Issue>(`/issues/${editId}`).then((issue) => {
+      setForm({
+        moduleId: issue.moduleId ? String(issue.moduleId) : "",
+        title: issue.title,
+        description: issue.description,
+        searchKeywords: issue.searchKeywords || "",
+        envInfo: issue.envInfo || "",
+        vpnInfo: issue.vpnInfo || "",
+        domainId: issue.domainId ? String(issue.domainId) : "",
+        productName: issue.productName || "",
+        foundVersionName: issue.foundVersionName || "",
+        priority: (issue.priority || "") as Priority,
+      })
+    }).finally(() => setLoading(false))
+  }, [isEdit, editId])
+
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }))
   const field = (key: keyof Dictionaries["customization"]["issue"]["fields"]) =>
     dict?.customization.issue.fields[key]
@@ -51,33 +73,47 @@ export function IssueNewPage() {
     if (!htmlToText(form.description)) return toast.error("请填写问题描述")
     setSaving(true)
     try {
-      const created = await api.post<Issue>("/issues", {
+      const payload = {
         moduleId: Number(form.moduleId),
         title: form.title.trim(),
         description: form.description,
+        searchKeywords: form.searchKeywords.trim() || undefined,
         envInfo: form.envInfo || undefined,
         vpnInfo: form.vpnInfo || undefined,
         domainId: form.domainId ? Number(form.domainId) : undefined,
         productName: form.productName.trim() || undefined,
         foundVersionName: form.foundVersionName.trim() || undefined,
         priority: form.priority,
-      })
-      toast.success("问题已创建")
-      navigate(`/issues/${created.id}`)
+      }
+      if (isEdit && editId) {
+        await api.put<Issue>(`/issues/${editId}`, { id: Number(editId), ...payload })
+        toast.success("问题已更新")
+        navigate(`/issues/${editId}`)
+      } else {
+        const created = await api.post<Issue>("/issues", payload)
+        toast.success("问题已创建")
+        navigate(`/issues/${created.id}`)
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "创建失败")
+      toast.error(err instanceof Error ? err.message : isEdit ? "更新失败" : "创建失败")
     } finally {
       setSaving(false)
     }
   }
 
+  if (loading) return (
+    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+      <Loader2 className="mr-2 size-4 animate-spin" /> 加载中…
+    </div>
+  )
+
   return (
     <>
-      <PageHeader title={`新建${issueTerm}`} subtitle={`登记一个新${issueTerm}`} actions={
+      <PageHeader title={`${isEdit ? "编辑" : "新建"}${issueTerm}`} subtitle={isEdit ? "修改问题信息" : "登记一个新问题"} actions={
         <>
           <Button variant="outline" onClick={() => navigate(-1)}>取消</Button>
           <Button onClick={submit} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin" />} 创建{issueTerm}
+            {saving && <Loader2 className="size-4 animate-spin" />} {isEdit ? "保存修改" : `创建${issueTerm}`}
           </Button>
         </>
       } />
@@ -110,6 +146,15 @@ export function IssueNewPage() {
                     rows={8}
                   />}
             </ConfiguredField>
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label>搜索关键字</Label>
+              <Input
+                value={form.searchKeywords}
+                onChange={(e) => set("searchKeywords", e.target.value)}
+                placeholder="便于检索的关键词，多个用空格分隔（可选）"
+                maxLength={255}
+              />
+            </div>
             <ConfiguredField config={field("module")}>
               <Select value={form.moduleId} onValueChange={(v) => set("moduleId", v)}>
                 <SelectTrigger><SelectValue placeholder={field("module")?.placeholder} /></SelectTrigger>

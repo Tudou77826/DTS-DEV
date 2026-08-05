@@ -1,6 +1,7 @@
 package com.dts.domain;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,7 +27,8 @@ public class User extends BaseEntity {
     /** 显示名/姓名 */
     private String displayName;
 
-    /** 本地密码（BCrypt 哈希）；统一认证建档用户可为空 */
+    /** 本地密码（BCrypt 哈希）；统一认证建档用户可为空。仅写入，绝不序列化下发。 */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private String role; // SUBMITTER / DEVELOPER / LEADER

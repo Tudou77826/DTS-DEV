@@ -307,7 +307,7 @@ function IssueModelPanel({ value, onChange }: EditorProps) {
           <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
             <div className="text-xs text-muted-foreground">编号预览</div>
             <div className="mt-2 font-mono text-sm font-semibold">
-              {issue.code.prefix}-260729-{"1".padStart(issue.code.sequenceDigits, "0")}
+              {issue.code.prefix}-{formatPreviewDate(issue.code.datePattern)}-{"1".padStart(issue.code.sequenceDigits, "0")}
             </div>
           </div>
         </div>
@@ -1033,4 +1033,15 @@ const FEATURE_LABEL: Record<string, string> = {
   investigations: "版本排查", batchOperations: "批量操作", "batch-operations": "批量操作",
   excelExport: "Excel 导出", "excel-export": "Excel 导出",
   richText: "富文本描述", "rich-text": "富文本描述",
+}
+
+/** 按接入配置的日期格式生成「今天」的编号日期段，与后端 DateFormatter 语义保持一致。 */
+function formatPreviewDate(pattern: string): string {
+  const now = new Date()
+  const pad = (value: number) => String(value).padStart(2, "0")
+  return (pattern || "yyMMdd")
+    .replace(/yyyy/g, String(now.getFullYear()))
+    .replace(/yy/g, pad(now.getFullYear() % 100))
+    .replace(/MM/g, pad(now.getMonth() + 1))
+    .replace(/dd/g, pad(now.getDate()))
 }

@@ -9,7 +9,7 @@ import type { Issue, IssueStatus } from "@/lib/types"
 import { StatusBadge } from "@/components/status-badge"
 import { formatDateTime } from "@/lib/labels"
 
-interface MySummary { pending: number; todayNew: number; overdue: number }
+interface MySummary { pending: number; todayNew: number; overdue: number; resolved: number }
 interface Overview {
   total: number; todayNew: number; resolved: number; unclosed: number
   unassigned: number; overdue: number
@@ -19,7 +19,7 @@ interface Overview {
 export function DashboardPage() {
   const { user } = useAuth()
   const isLeader = user?.role === "LEADER"
-  const [my, setMy] = useState<MySummary>({ pending: 0, todayNew: 0, overdue: 0 })
+  const [my, setMy] = useState<MySummary>({ pending: 0, todayNew: 0, overdue: 0, resolved: 0 })
   const [overview, setOverview] = useState<Overview | null>(null)
   const [recent, setRecent] = useState<Issue[]>([])
 
@@ -44,7 +44,7 @@ export function DashboardPage() {
         { label: "我的待办", value: my.pending, icon: Inbox, color: "#3b82f6" },
         { label: "今日新增", value: my.todayNew, icon: Clock, color: "#10b981" },
         { label: "已超期", value: my.overdue, icon: AlertTriangle, color: "#ef4444" },
-        { label: "已解决", value: overview?.resolved ?? 0, icon: CheckCircle2, color: "#15803d" },
+        { label: "已解决", value: my.resolved, icon: CheckCircle2, color: "#15803d" },
       ]
 
   return (

@@ -49,6 +49,7 @@ export default function App() {
       <Route path="/issues" element={<Protected><IssueListPage /></Protected>} />
       <Route path="/issues/new" element={<Protected><IssueNewPage /></Protected>} />
       <Route path="/issues/:id" element={<Protected><IssueDetailPage /></Protected>} />
+      <Route path="/issues/:id/edit" element={<Protected><IssueNewPage /></Protected>} />
       <Route path="/my-tasks" element={<Protected><MyTasksPage /></Protected>} />
       <Route path="/investigations" element={<Protected><InvestigationPage /></Protected>} />
       <Route path="/stats" element={<Protected><StatsPage /></Protected>} />

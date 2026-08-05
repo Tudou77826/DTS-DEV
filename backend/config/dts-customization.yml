@@ -10,7 +10,7 @@ dts:
       short-name: DTS
       login-title: 登录
       login-subtitle: 使用账号密码登录系统
-      primary-color: '#2466eb'
+      primary-color: '#2563eb'
       show-demo-accounts: true
       demo-account-hint: 演示环境默认密码为 123456
     terminology:
@@ -32,7 +32,7 @@ dts:
       label: 项目负责人
       color: null
     admin:
-      password-hash: '$2b$10$sEFjSU70UXLEDRDQbbCp2eQdnGiSfTDb.L4gvmu6v2nDD8FkO09o6'
+      password-hash: $2a$10$iUw9X7Ll0/TJPXYI7TCXoeOmS3S5kJgu5K05WJecIT3HYI/eAIsdK
     issue:
       code:
         prefix: ISS

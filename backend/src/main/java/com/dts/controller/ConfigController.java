@@ -22,14 +22,13 @@ import java.util.Map;
 public class ConfigController {
 
     private final ConfigService configService;
-    private final DtsCustomizationProperties customization;
     private final CustomizationAdminService customizationAdminService;
     private final AdminAccessService adminAccessService;
 
-    /** 登录前也可读取的系统级接入定制配置。 */
+    /** 登录前也可读取的系统级接入定制配置（不包含管理员密码哈希）。 */
     @GetMapping("/customization")
     public ApiResponse<DtsCustomizationProperties> customization() {
-        return ApiResponse.ok(customization);
+        return ApiResponse.ok(customizationAdminService.publicView());
     }
 
     /** 共享管理员密码门禁：校验通过后签发短时管理员令牌。 */

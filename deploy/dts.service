@@ -13,6 +13,8 @@ Environment=SPRING_DATASOURCE_URL=jdbc:sqlite:/opt/dts/data/dts.db
 Environment=APP_CUSTOMIZATION_EXTERNAL_FILE=/opt/dts/backend/config/dts-customization.yml
 Environment=APP_STORAGE_ROOT=/opt/dts/data/uploads
 Environment=APP_CORS_ALLOWED_ORIGINS=http://39.108.107.148:18081
+# 生产必须设置随机 JWT 密钥：openssl rand -hex 32（放 .env.production 中）
+Environment=SPRINGDOC_ENABLED=false
 ExecStart=/usr/lib/jvm/java-21-alibaba-dragonwell-21.0.11.0.11-1.1.al8.x86_64/bin/java -Xms128m -Xmx640m -jar /opt/dts/backend/dts-backend.jar
 Restart=on-failure
 RestartSec=5

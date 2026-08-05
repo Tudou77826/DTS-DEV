@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { UserCog, GitPullRequestArrow } from "lucide-react"
+import { UserCog, GitPullRequestArrow, UsersRound, X } from "lucide-react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter, DialogClose,
 } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
@@ -46,7 +47,13 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
   const [assigneeId, setAssigneeId] = useState(issue.assigneeId ? String(issue.assigneeId) : "")
   const [priority, setPriority] = useState(issue.priority)
   const [planFinishAt, setPlanFinishAt] = useState("")
+  const [collaboratorIds, setCollaboratorIds] = useState<number[]>(issue.collaboratorIds || [])
   const [saving, setSaving] = useState(false)
+
+  const toggleCollaborator = (id: number) => {
+    setCollaboratorIds((current) =>
+      current.includes(id) ? current.filter((v) => v !== id) : [...current, id])
+  }
 
   const submit = async () => {
     setSaving(true)
@@ -55,6 +62,7 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
         assigneeId: assigneeId ? Number(assigneeId) : undefined,
         priority,
         planFinishAt: planFinishAt ? new Date(planFinishAt).toISOString() : undefined,
+        collaboratorIds: collaboratorIds.length > 0 ? collaboratorIds : undefined,
       })
       toast.success("已分配")
       onChanged()
@@ -65,6 +73,8 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
     }
   }
 
+  const collaboratorOptions = dict?.developers.filter((u) => String(u.id) !== assigneeId) || []
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -73,7 +83,7 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
       <DialogContent>
         <DialogHeader>
           <DialogTitle>分配责任人与优先级</DialogTitle>
-          <DialogDescription>设置问题定位人、优先级和计划完成时间</DialogDescription>
+          <DialogDescription>设置问题定位人、协同人、优先级和计划完成时间</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="flex flex-col gap-2">
@@ -84,6 +94,33 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
                 {dict?.developers.map((u) => (
                   <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>协同处理人（可多选）</Label>
+            {collaboratorIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {collaboratorIds.map((id) => {
+                  const u = collaboratorOptions.find((c) => c.id === id)
+                  if (!u) return null
+                  return (
+                    <Badge key={id} variant="secondary" className="gap-1">
+                      {u.displayName}
+                      <button className="rounded-full hover:text-destructive" onClick={() => toggleCollaborator(id)} aria-label={`移除 ${u.displayName}`}>
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  )
+                })}
+              </div>
+            )}
+            <Select value="" onValueChange={(v) => { if (v) toggleCollaborator(Number(v)) }}>
+              <SelectTrigger><SelectValue placeholder="添加协同人…" /></SelectTrigger>
+              <SelectContent>
+                {collaboratorOptions
+                  .filter((u) => !collaboratorIds.includes(u.id))
+                  .map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import {
-  Search, RotateCcw, ChevronLeft, ChevronRight, AlertTriangle, Download, Users, Archive,
+  Search, RotateCcw, ChevronLeft, ChevronRight, AlertTriangle, Download, Users, Archive, X,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
@@ -44,6 +44,11 @@ export function IssueListPage() {
   const productName = searchParams.get("productName") || ""
   const assigneeId = searchParams.get("assigneeId") || ""
   const foundVersionName = searchParams.get("foundVersionName") || ""
+  const domainId = searchParams.get("domainId") || ""
+  const submitterId = searchParams.get("submitterId") || ""
+  const createdFrom = searchParams.get("createdFrom") || ""
+  const createdTo = searchParams.get("createdTo") || ""
+  const investigateVersionName = searchParams.get("investigateVersionName") || ""
   const page = parseInt(searchParams.get("page") || "1")
   const overdueOnly = searchParams.get("overdue") === "1"
 
@@ -67,15 +72,20 @@ export function IssueListPage() {
       if (productName) params.set("productName", productName)
       if (assigneeId) params.set("assigneeId", assigneeId)
       if (foundVersionName) params.set("foundVersionName", foundVersionName)
+      if (domainId) params.set("domainId", domainId)
+      if (submitterId) params.set("submitterId", submitterId)
+      if (createdFrom) params.set("createdFrom", `${createdFrom}T00:00:00`)
+      if (createdTo) params.set("createdTo", `${createdTo}T23:59:59`)
+      if (investigateVersionName) params.set("investigateVersionName", investigateVersionName)
+      if (overdueOnly) params.set("overdue", "1")
       const result = await api.get<PageResult<Issue>>(`/issues?${params.toString()}`)
-      let list = result.list
-      if (overdueOnly) list = list.filter((i) => i.overdue)
-      setData({ ...result, list })
+      setData(result)
       setSelected([])
     } finally {
       setLoading(false)
     }
-  }, [keyword, status, moduleId, productName, assigneeId, foundVersionName, page, overdueOnly])
+  }, [keyword, status, moduleId, productName, assigneeId, foundVersionName,
+    domainId, submitterId, createdFrom, createdTo, investigateVersionName, page, overdueOnly])
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
   useEffect(() => { load() }, [load])
@@ -90,6 +100,12 @@ export function IssueListPage() {
     if (productName) params.set("productName", productName)
     if (assigneeId) params.set("assigneeId", assigneeId)
     if (foundVersionName) params.set("foundVersionName", foundVersionName)
+    if (domainId) params.set("domainId", domainId)
+    if (submitterId) params.set("submitterId", submitterId)
+    if (createdFrom) params.set("createdFrom", `${createdFrom}T00:00:00`)
+    if (createdTo) params.set("createdTo", `${createdTo}T23:59:59`)
+    if (investigateVersionName) params.set("investigateVersionName", investigateVersionName)
+    if (overdueOnly) params.set("overdue", "1")
     return params
   }
 
@@ -178,6 +194,47 @@ export function IssueListPage() {
                 {dict?.developers.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={domainId} onValueChange={(v) => update({ domainId: v === "ALL" ? "" : v, page: null })}>
+              <SelectTrigger className="w-[130px]"><SelectValue placeholder="问题领域" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部领域</SelectItem>
+                {dict?.domains.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={submitterId} onValueChange={(v) => update({ submitterId: v === "ALL" ? "" : v, page: null })}>
+              <SelectTrigger className="w-[130px]"><SelectValue placeholder="提出人" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部提出人</SelectItem>
+                {dict?.users.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input
+              className="w-[145px]"
+              value={investigateVersionName}
+              onChange={(event) => update({ investigateVersionName: event.target.value, page: null })}
+              placeholder="排查版本"
+            />
+            <Input
+              type="date"
+              className="w-[140px]"
+              value={createdFrom}
+              onChange={(event) => update({ createdFrom: event.target.value, page: null })}
+              title="创建时间（起）"
+            />
+            <Input
+              type="date"
+              className="w-[140px]"
+              value={createdTo}
+              onChange={(event) => update({ createdTo: event.target.value, page: null })}
+              title="创建时间（止）"
+            />
+            <Button
+              variant={overdueOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => update({ overdue: overdueOnly ? "" : "1", page: null })}
+            >
+              <AlertTriangle className="size-4" /> 超期
+            </Button>
             <Button variant="outline" size="icon" onClick={reset} title="重置">
               <RotateCcw className="size-4" />
             </Button>
@@ -188,9 +245,11 @@ export function IssueListPage() {
           <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
             <span className="mr-auto text-sm font-medium">已选择 {selected.length} 项</span>
             {user?.role === "LEADER" && (
-              <Button size="sm" onClick={() => setAssignOpen(true)}><Users className="size-4" /> 批量指派</Button>
+              <>
+                <Button size="sm" onClick={() => setAssignOpen(true)}><Users className="size-4" /> 批量指派</Button>
+                <Button size="sm" variant="outline" onClick={batchClose}><Archive className="size-4" /> 批量关闭</Button>
+              </>
             )}
-            <Button size="sm" variant="outline" onClick={batchClose}><Archive className="size-4" /> 批量关闭</Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected([])}>取消选择</Button>
           </div>
         )}
@@ -304,7 +363,15 @@ function BatchAssignDialog({
   onDone: () => void
 }) {
   const [assigneeId, setAssigneeId] = useState("")
+  const [collaboratorIds, setCollaboratorIds] = useState<number[]>([])
+  const [priority, setPriority] = useState("")
+  const [planFinishAt, setPlanFinishAt] = useState("")
   const [saving, setSaving] = useState(false)
+
+  const toggleCollaborator = (id: number) => {
+    setCollaboratorIds((current) =>
+      current.includes(id) ? current.filter((v) => v !== id) : [...current, id])
+  }
 
   const submit = async () => {
     if (!assigneeId) return toast.error("请选择责任人")
@@ -313,6 +380,9 @@ function BatchAssignDialog({
       const result = await api.post<BatchResult>("/issues/batch/assign", {
         issueIds,
         assigneeId: Number(assigneeId),
+        collaboratorIds: collaboratorIds.length > 0 ? collaboratorIds : undefined,
+        priority: priority || undefined,
+        planFinishAt: planFinishAt ? new Date(planFinishAt).toISOString() : undefined,
         remark: "批量指派",
       })
       showBatchResult(result, "批量指派")
@@ -324,23 +394,69 @@ function BatchAssignDialog({
     }
   }
 
+  const collaboratorOptions = dict?.developers.filter((u) => String(u.id) !== assigneeId) || []
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>批量指派 {issueIds.length} 个问题</DialogTitle>
-          <DialogDescription>统一设置责任人；待分配问题会自动进入待定位。</DialogDescription>
+          <DialogDescription>统一设置责任人、协同人与优先级；待分配问题会自动进入待定位。</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Label>责任人</Label>
-          <Select value={assigneeId} onValueChange={setAssigneeId}>
-            <SelectTrigger><SelectValue placeholder="选择开发人员" /></SelectTrigger>
-            <SelectContent>
-              {dict?.developers.map((developer) => (
-                <SelectItem key={developer.id} value={String(developer.id)}>{developer.displayName}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid gap-3 py-2">
+          <div className="flex flex-col gap-2">
+            <Label>责任人</Label>
+            <Select value={assigneeId} onValueChange={setAssigneeId}>
+              <SelectTrigger><SelectValue placeholder="选择开发人员" /></SelectTrigger>
+              <SelectContent>
+                {dict?.developers.map((developer) => (
+                  <SelectItem key={developer.id} value={String(developer.id)}>{developer.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>协同处理人（可多选，可选）</Label>
+            {collaboratorIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {collaboratorIds.map((id) => {
+                  const u = collaboratorOptions.find((c) => c.id === id)
+                  if (!u) return null
+                  return (
+                    <Badge key={id} variant="secondary" className="gap-1">
+                      {u.displayName}
+                      <button className="rounded-full hover:text-destructive" onClick={() => toggleCollaborator(id)} aria-label={`移除 ${u.displayName}`}>
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  )
+                })}
+              </div>
+            )}
+            <Select value="" onValueChange={(v) => { if (v) toggleCollaborator(Number(v)) }}>
+              <SelectTrigger><SelectValue placeholder="添加协同人…" /></SelectTrigger>
+              <SelectContent>
+                {collaboratorOptions
+                  .filter((u) => !collaboratorIds.includes(u.id))
+                  .map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>优先级（可选）</Label>
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger><SelectValue placeholder="保持原有" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(PRIORITY_META).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>计划完成时间（可选）</Label>
+            <Input type="datetime-local" value={planFinishAt} onChange={(e) => setPlanFinishAt(e.target.value)} />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
