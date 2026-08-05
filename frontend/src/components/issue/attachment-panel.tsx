@@ -85,7 +85,7 @@ export function AttachmentPanel({
                   onClick={() => api.download(`/attachments/${item.id}/download`, item.originalName)}>
                   <Download className="size-4" />
                 </Button>
-                {(user?.role === "ADMIN" || user?.id === item.uploaderId) && (
+                {user?.id === item.uploaderId && (
                   <Button variant="ghost" size="icon" title="删除" onClick={() => remove(item)}>
                     <Trash2 className="size-4 text-destructive" />
                   </Button>

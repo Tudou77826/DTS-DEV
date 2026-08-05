@@ -42,10 +42,26 @@ mybatis-plus:
       logic-delete-field: null
       id-type: auto
 
-# JWT
+# 认证
 app:
   customization:
     external-file: ./config/dts-customization.yml
+  auth:
+    # 本地账号密码登录开关（开发模式默认开启；生产接入统一认证后应通过
+    # DTS_AUTH_LOCAL_ENABLED=false 关闭）
+    local:
+      enabled: ${DTS_AUTH_LOCAL_ENABLED:true}
+  oauth:
+    header:
+      # 信任反向代理（OAuth 认证网关）注入的用户头。启用后网关必须注入用户名头并剥离外部伪造的同名头。
+      enabled: ${DTS_OAUTH_HEADER_ENABLED:false}
+      username-header: ${DTS_OAUTH_USERNAME_HEADER:X-Auth-User}
+      display-name-header: ${DTS_OAUTH_DISPLAY_NAME_HEADER:X-Auth-Display-Name}
+      email-header: ${DTS_OAUTH_EMAIL_HEADER:X-Auth-Email}
+      employee-no-header: ${DTS_OAUTH_EMPLOYEE_NO_HEADER:X-Auth-Employee-No}
+  admin-token:
+    # 接入定制共享密码门禁签发的管理员令牌有效期
+    expiration-ms: 1800000   # 30min
   bootstrap:
     # 仅用于首次创建配置文件中的账号；已有账号密码不会在重启时被覆盖。
     default-user-password: ${DTS_BOOTSTRAP_DEFAULT_PASSWORD:123456}

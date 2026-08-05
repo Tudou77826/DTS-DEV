@@ -24,10 +24,20 @@ public class DtsCustomizationProperties {
     private Branding branding = new Branding();
     private Terminology terminology = new Terminology();
     private List<ValueOption> roles = new ArrayList<>();
+    private AdminConfig admin = new AdminConfig();
     private IssueModel issue = new IssueModel();
     private MasterData masterData = new MasterData();
     private Map<String, Boolean> features = new LinkedHashMap<>();
     private Map<String, Object> extensions = new LinkedHashMap<>();
+
+    /**
+     * 接入定制管理入口的共享密码（BCrypt 哈希）。
+     * 系统不再维护管理员账号，改为由密码门禁签发短时管理员令牌。
+     */
+    @Data
+    public static class AdminConfig {
+        private String passwordHash;
+    }
 
     @Data
     public static class Profile {

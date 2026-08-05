@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 启动时把接入配置中的组织、人员和业务主数据同步到运行库。
@@ -60,6 +61,13 @@ public class DataInitializer implements CommandLineRunner {
         int created = 0;
         int updated = 0;
         for (DtsCustomizationProperties.UserOption configured : customization.getMasterData().getUsers()) {
+            // 接入配置只用于维护具备处理/被指定权限的人员（负责人、开发人员），
+            // 普通提出人由统一认证首次登录时自动建档，不在配置中维护。
+            if (!Set.of("DEVELOPER", "LEADER").contains(configured.getRole())) {
+                log.warn("跳过接入配置中的用户 {}：角色 {} 不可配置（仅支持 DEVELOPER / LEADER）",
+                        configured.getUsername(), configured.getRole());
+                continue;
+            }
             User user = userMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<User>lambdaQuery()
                     .eq(User::getUsername, configured.getUsername()).last("LIMIT 1"));
             boolean isNew = user == null;

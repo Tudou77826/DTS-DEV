@@ -22,14 +22,13 @@ export function IssueActions({ issue, onChanged }: { issue: Issue; onChanged: ()
   const user = useAuth((state) => state.user)
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
 
-  const isAdmin = user?.role === "ADMIN"
   const customization = useCustomization((state) => state.value)
-  const canAssign = user?.role === "LEADER" || isAdmin
+  const canAssign = user?.role === "LEADER"
   const nextStatuses = (customization?.issue.transitions[issue.status] || []).filter((status) => {
     if (status === "CLOSED" || status === "REOPENED") {
-      return isAdmin || user?.id === issue.submitterId
+      return user?.id === issue.submitterId
     }
-    return isAdmin || user?.id === issue.assigneeId
+    return user?.id === issue.assigneeId
   })
 
   return (

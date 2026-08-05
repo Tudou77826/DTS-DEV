@@ -21,7 +21,7 @@ public class IssuePermissionService {
 
     public void requireLeader() {
         if (!SecurityUtil.current().isLeader()) {
-            throw new BusinessException(403, "仅项目负责人或管理员可执行该操作");
+            throw new BusinessException(403, "仅项目负责人可执行该操作");
         }
     }
 
@@ -33,7 +33,7 @@ public class IssuePermissionService {
                 || containsId(issue.getCollaboratorIds(), user.getId())) {
             return;
         }
-        throw new BusinessException(403, "仅问题参与人、项目负责人或管理员可执行该操作");
+        throw new BusinessException(403, "仅问题参与人或项目负责人可执行该操作");
     }
 
     public void requireTransition(Issue issue, String newStatus, String remark) {
@@ -49,11 +49,11 @@ public class IssuePermissionService {
 
         LoginUser user = SecurityUtil.current();
         if (IssueStatus.CLOSED.equals(newStatus) || IssueStatus.REOPENED.equals(newStatus)) {
-            if (!user.isAdmin() && !user.getId().equals(issue.getSubmitterId())) {
-                throw new BusinessException(403, "仅问题提出人或管理员可关闭/重新打开问题");
+            if (!user.getId().equals(issue.getSubmitterId())) {
+                throw new BusinessException(403, "仅问题提出人可关闭/重新打开问题");
             }
-        } else if (!user.isAdmin() && !user.getId().equals(issue.getAssigneeId())) {
-            throw new BusinessException(403, "仅当前责任人或管理员可执行该状态流转");
+        } else if (!user.getId().equals(issue.getAssigneeId())) {
+            throw new BusinessException(403, "仅当前责任人可执行该状态流转");
         }
 
         if (!IssueStatus.PENDING_ASSIGN.equals(newStatus)

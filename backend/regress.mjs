@@ -25,6 +25,9 @@ let r = await req("POST", "/auth/login", { username: "leader", password: "123456
 const T = r.json.data.token;
 const dict = (await req("GET", "/config/dictionaries", null, T)).json.data;
 const MODID = dict.modules[0].id, VERID = dict.versions[0].id, DEVID = dict.developers[0].id, DEVNAME = dict.developers[0].displayName;
+// 责任人（开发人员）的登录令牌，用于状态流转
+r = await req("POST", "/auth/login", { username: dict.developers[0].username, password: "123456" });
+const DT = r.json.data.token;
 
 console.log("=== 核心闭环 ===");
 r = await req("POST", "/issues", { moduleId: MODID, description: "回归测试问题", priority: "HIGH" }, T);
@@ -35,25 +38,26 @@ r = await req("POST", `/issues/${IID}/assign`, { assigneeId: DEVID, priority: "U
 assert("分配→待定位", "PENDING_LOCATE", r.json.data.status);
 
 for (const s of ["LOCATING", "PENDING_VERIFY", "RESOLVED", "CLOSED"]) {
-  r = await req("POST", `/issues/${IID}/status`, { status: s }, T);
+  r = await req("POST", `/issues/${IID}/status`, { status: s }, DT);
   assert(`流转→${s}`, s, r.json.data.status);
 }
 r = await req("POST", `/issues/${IID}/status`, { status: "REOPENED" }, T);
-assert("重新打开", "REOPENED", r.json.data.status);
+assert("重新打开（提交人）", "REOPENED", r.json.data.status);
 
 console.log("\n=== P0: 权限矩阵 ===");
-// 检查权限服务是否生效：用 submitter 尝试解决别人负责的问题
-r = await req("POST", "/auth/login", { username: "submitter", password: "123456" });
-const SUB_T = r.json.data.token;
-// 创建一个问题分配给 wangwu，然后用 submitter 尝试解决（应被拒）
+// 权限矩阵：只有责任人可流转；提交人可关闭/重新打开；其余人（含负责人）不可越权
+// 创建一个问题分配给另一个开发人员，再用 leader 尝试解决（leader 不是责任人，应被拒）
 r = await req("POST", "/issues", { moduleId: MODID, description: "权限测试", assigneeId: dict.developers[1].id }, T);
 const PID = r.json.data.id;
-// 推到处理中
 await req("POST", `/issues/${PID}/assign`, { assigneeId: dict.developers[1].id }, T);
-await req("POST", `/issues/${PID}/status`, { status: "LOCATING" }, T);
-// submitter 尝试解决（非处理人）
-r = await req("POST", `/issues/${PID}/status`, { status: "RESOLVED", remark: "我替你解决了" }, SUB_T);
-assert("非处理人不能解决（应失败 403/400）", true, r.json.code !== 0);
+// 由责任人推到定位中
+r = await req("POST", "/auth/login", { username: dict.developers[1].username, password: "123456" });
+const D2T = r.json.data.token;
+r = await req("POST", `/issues/${PID}/status`, { status: "LOCATING" }, D2T);
+assert("责任人可流转到定位中", "LOCATING", r.json.data.status);
+// leader 尝试解决（非责任人）
+r = await req("POST", `/issues/${PID}/status`, { status: "RESOLVED", remark: "我替你解决了" }, T);
+assert("非责任人不能解决（应失败 403/400）", true, r.json.code !== 0);
 
 console.log("\n=== P0: 问题编号格式 ISS-yyMMdd-NNN ===");
 r = await req("POST", "/issues", { moduleId: MODID, description: "编号格式测试" }, T);

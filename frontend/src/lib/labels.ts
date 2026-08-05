@@ -44,7 +44,6 @@ export const ROLE_LABEL: Record<string, string> = {
   SUBMITTER: "问题提出人",
   DEVELOPER: "开发人员",
   LEADER: "项目负责人",
-  ADMIN: "管理员",
 }
 
 export function applyCustomizationLabels(config: DtsCustomization) {

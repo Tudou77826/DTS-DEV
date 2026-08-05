@@ -31,3 +31,6 @@ backend/config/*.bak-*
 # OS
 .DS_Store
 Thumbs.db
+
+# 本地工具（zcode 规划目录等）
+.zcode/

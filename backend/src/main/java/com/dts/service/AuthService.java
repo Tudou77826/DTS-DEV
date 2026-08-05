@@ -7,6 +7,7 @@ import com.dts.mapper.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.dts.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +19,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private static final Set<String> ROLES = Set.of("SUBMITTER", "DEVELOPER", "LEADER", "ADMIN");
+    private static final Set<String> ROLES = Set.of("SUBMITTER", "DEVELOPER", "LEADER");
     private static final List<String> AVATAR_COLORS =
             List.of("#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6");
 
@@ -26,8 +27,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
+    @Value("${app.auth.local.enabled}")
+    private boolean localLoginEnabled;
+
     @Transactional
     public AuthDtos.LoginResponse login(AuthDtos.LoginRequest req) {
+        if (!localLoginEnabled) {
+            throw new BusinessException(403, "系统已接入统一认证，本地账号登录未启用");
+        }
         User user = userMapper.selectOne(Wrappers.<User>lambdaQuery()
                 .eq(User::getUsername, req.getUsername()));
         if (user == null) {
@@ -36,15 +43,19 @@ public class AuthService {
         if (!user.getActive()) {
             throw new BusinessException(403, "账号已被停用");
         }
-        if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+        if (user.getPassword() == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BusinessException(401, "用户名或密码错误");
         }
-        String token = jwtUtil.generate(user.getId(), user.getUsername(), user.getDisplayName(), user.getRole(), user.getEmployeeNo());
+        String token = jwtUtil.generate(user.getId(), user.getUsername(), user.getDisplayName(),
+                user.getRole(), user.getEmployeeNo(), user.getAvatarColor());
         return buildResponse(token, user);
     }
 
     @Transactional
     public AuthDtos.LoginResponse register(AuthDtos.RegisterRequest req) {
+        if (!localLoginEnabled) {
+            throw new BusinessException(403, "系统已接入统一认证，本地注册未启用");
+        }
         if (userMapper.selectCount(Wrappers.<User>lambdaQuery()
                 .eq(User::getUsername, req.getUsername())) > 0) {
             throw new BusinessException("用户名已存在");
@@ -68,7 +79,8 @@ public class AuthService {
                 .active(true)
                 .build();
         userMapper.insert(user);
-        String token = jwtUtil.generate(user.getId(), user.getUsername(), user.getDisplayName(), user.getRole(), user.getEmployeeNo());
+        String token = jwtUtil.generate(user.getId(), user.getUsername(), user.getDisplayName(),
+                user.getRole(), user.getEmployeeNo(), user.getAvatarColor());
         return buildResponse(token, user);
     }
 

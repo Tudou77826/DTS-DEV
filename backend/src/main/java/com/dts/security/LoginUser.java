@@ -19,8 +19,9 @@ public class LoginUser implements UserDetails {
     private final Long id;
     private final String username;
     private final String displayName;
-    private final String role; // SUBMITTER / DEVELOPER / LEADER / ADMIN
+    private final String role; // SUBMITTER / DEVELOPER / LEADER
     private final String employeeNo;
+    private final String avatarColor;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -32,11 +33,7 @@ public class LoginUser implements UserDetails {
         return "";
     }
 
-    public boolean isAdmin() {
-        return "ADMIN".equals(role);
-    }
-
     public boolean isLeader() {
-        return "LEADER".equals(role) || isAdmin();
+        return "LEADER".equals(role);
     }
 }

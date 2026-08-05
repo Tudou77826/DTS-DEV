@@ -18,7 +18,7 @@ interface Overview {
 
 export function DashboardPage() {
   const { user } = useAuth()
-  const isLeader = user?.role === "LEADER" || user?.role === "ADMIN"
+  const isLeader = user?.role === "LEADER"
   const [my, setMy] = useState<MySummary>({ pending: 0, todayNew: 0, overdue: 0 })
   const [overview, setOverview] = useState<Overview | null>(null)
   const [recent, setRecent] = useState<Issue[]>([])

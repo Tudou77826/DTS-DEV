@@ -172,7 +172,12 @@ npm run dev
 
 ## 四、回归检查清单（41 项，按顺序手测或脚本测）
 
-账号：leader / wangwu / sunqi / submitter / admin，密码均为 `123456`
+账号（本地开发模式）：leader / wangwu / sunqi，密码均为 `123456`
+接入定制管理：输入共享管理员密码 `admin123`（生产部署后请通过定制页修改）
+
+> 认证方式已切换为「反向代理 OAuth + 代理头注入」，本地账号密码登录仅作为开发模式开关（`app.auth.local.enabled`）。
+> 接入定制不再依赖 ADMIN 账号，改为共享管理员密码门禁（默认 `admin123`，BCrypt 存于配置 `admin.password-hash`）。
+> 普通问题提出人由统一认证首次登录时自动建档，无需在接入配置中维护。
 
 1. 登录返回 token + 用户信息正确
 2. 错误密码 → 401
@@ -278,11 +283,75 @@ cd frontend && npm run dev
 # 访问 http://localhost:5173（若端口被占会自动换，看日志）
 ```
 
+本地开发默认关闭代理头认证、开启本地账号密码登录：`app.oauth.header.enabled=false`、`app.auth.local.enabled=true`
+（`backend/src/main/resources/application-sqlite.yml` 已配置）。账号 leader / wangwu / sunqi，密码 `123456`。
+
 接口文档：http://localhost:8080/api/swagger-ui.html
 
 ---
 
-## 九、关键文件清单（接手人优先看这些）
+## 九、认证架构（OAuth 对接改造）
+
+### 9.1 目标模式（生产）
+
+- 外层由**反向代理 / OAuth 认证网关**（如 oauth2-proxy、Keycloak 网关）完成统一认证。
+- 网关认证通过后向后端注入用户身份头，并**剥离客户端伪造的同名头**：
+  - `X-Auth-User`（必填，登录名）→ `app.oauth.header.username-header`
+  - `X-Auth-Display-Name`、`X-Auth-Email`、`X-Auth-Employee-No`（可选）
+- 后端 `security/HeaderAuthFilter.java` 信任这些头建立登录态：
+  - 已存在的用户：按运行库中的角色构建登录态（角色由接入配置/建档维护）；
+  - **首次登录自动建档**为普通提出人（`SUBMITTER`，无密码），后续可在接入配置中升级为负责人/开发人员；
+  - 停用的账号（`active=false`）拒绝访问。
+- 生产配置：`DTS_OAUTH_HEADER_ENABLED=true`、`DTS_AUTH_LOCAL_ENABLED=false`。
+
+### 9.2 本地开发模式
+
+`app.auth.local.enabled=true` 时保留原有用户名+密码登录（JWT 签发），用于无 IdP 时的本地联调。
+本地登录与代理头认证互斥启用（启用代理头后，后端以代理头为准）。
+
+### 9.3 角色收敛
+
+| 角色 | 来源 | 权限 |
+| --- | --- | --- |
+| `SUBMITTER` | 统一认证首次登录自动建档 | 提问题、看问题、关闭/重新打开自己提交的问题 |
+| `DEVELOPER` | 接入配置 `master-data.users` | 可被指定为责任人、处理/流转问题 |
+| `LEADER` | 接入配置 `master-data.users` | 分配责任人、批量指派、负责人工作台 |
+
+原 `ADMIN` 角色已移除，**不再作为用户角色**。接入定制管理改为「共享管理员密码门禁」：
+
+- 密码以 BCrypt 哈希存于配置 `admin.password-hash`（默认 `admin123`，生产需立即修改）。
+- 任何已登录用户进入「接入定制」页时输入密码，验证通过后由 `AdminAccessService` 签发**短时管理员令牌**（默认 30 分钟，`app.admin-token.expiration-ms`）。
+- `AdminTokenFilter` 解析 `X-Admin-Token` 头并追加 `ROLE_ADMIN` 权限，放行 `ConfigController` 中 `@PreAuthorize("hasRole('ADMIN')")` 的管理接口。
+- 管理接口无普通权限，仅持有短时管理员令牌才可访问。
+
+### 9.4 关键文件
+
+```
+backend/src/main/java/com/dts/
+├── security/
+│   ├── HeaderAuthFilter.java      # 代理头认证 + 首次登录自动建档
+│   ├── AdminTokenFilter.java      # 管理员令牌 → 追加 ROLE_ADMIN
+│   ├── JwtAuthFilter.java         # 本地登录 JWT（开发模式）
+│   └── LoginUser.java             # isLeader() 仅 LEADER；含 avatarColor
+├── config/
+│   ├── AppAuthProperties.java     # app.auth.local / app.oauth.header
+│   ├── SecurityConfig.java        # 过滤器链：JWT → 代理头 → 管理员令牌
+│   └── DataInitializer.java       # 配置仅同步 DEVELOPER/LEADER，普通提出人自动建档
+├── service/
+│   ├── AdminAccessService.java    # 管理员密码校验 / 修改
+│   └── IssuePermissionService.java# 关闭/重开仅提交人，流转仅责任人（无管理员例外）
+└── controller/ConfigController.java # /config/customization/admin/verify + /password
+frontend/src/
+├── store/auth.ts                  # mode(local/oauth) + 管理员会话
+├── lib/api.ts                     # X-Admin-Token 注入 + 管理员会话失效处理
+└── pages/customization.tsx        # 管理员密码门禁页
+```
+
+数据库迁移 `V6__oauth_provision.sql`（MySQL 与 SQLite）：`sys_user.password` 允许为空（自动建档用户无本地密码）。
+
+---
+
+## 十、关键文件清单（接手人优先看这些）
 
 ```
 backend/

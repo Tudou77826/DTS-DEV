@@ -5,6 +5,7 @@ import com.dts.domain.*;
 import com.dts.config.DtsCustomizationProperties;
 import com.dts.service.ConfigService;
 import com.dts.service.CustomizationAdminService;
+import com.dts.service.AdminAccessService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -23,11 +24,27 @@ public class ConfigController {
     private final ConfigService configService;
     private final DtsCustomizationProperties customization;
     private final CustomizationAdminService customizationAdminService;
+    private final AdminAccessService adminAccessService;
 
     /** 登录前也可读取的系统级接入定制配置。 */
     @GetMapping("/customization")
     public ApiResponse<DtsCustomizationProperties> customization() {
         return ApiResponse.ok(customization);
+    }
+
+    /** 共享管理员密码门禁：校验通过后签发短时管理员令牌。 */
+    @PostMapping("/customization/admin/verify")
+    public ApiResponse<AdminAccessService.VerifyResponse> verifyAdminPassword(
+            @RequestBody AdminPasswordRequest request) {
+        return ApiResponse.ok(adminAccessService.verify(request.getPassword()));
+    }
+
+    /** 修改共享管理员密码（需要短时管理员令牌；写回配置，重启后生效）。 */
+    @PostMapping("/customization/admin/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> changeAdminPassword(@RequestBody AdminPasswordRequest request) {
+        adminAccessService.changePassword(request.getPassword());
+        return ApiResponse.ok();
     }
 
     @GetMapping("/customization/admin")
@@ -163,5 +180,10 @@ public class ConfigController {
     public static class CustomizationContentRequest {
         @NotBlank(message = "配置内容不能为空")
         private String content;
+    }
+
+    @Data
+    public static class AdminPasswordRequest {
+        private String password;
     }
 }

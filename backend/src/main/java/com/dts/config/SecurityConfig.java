@@ -2,6 +2,8 @@ package com.dts.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dts.common.ApiResponse;
+import com.dts.security.AdminTokenFilter;
+import com.dts.security.HeaderAuthFilter;
 import com.dts.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +32,8 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final HeaderAuthFilter headerAuthFilter;
+    private final AdminTokenFilter adminTokenFilter;
     private final Environment env;
 
     @Bean
@@ -61,7 +65,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
                         // 公开端点
-                        .requestMatchers("/auth/login", "/auth/register", "/config/customization").permitAll()
+                        .requestMatchers("/auth/login", "/auth/register", "/auth/mode", "/config/customization",
+                                "/config/customization/admin/verify").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
@@ -72,7 +77,10 @@ public class SecurityConfig {
                             resp.setCharacterEncoding(StandardCharsets.UTF_8.name());
                             resp.getWriter().write(unauthJson);
                         }))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // 认证顺序：本地 JWT → 代理用户头 → 管理员令牌（追加 ROLE_ADMIN）
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(headerAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(adminTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Navigate } from "react-router-dom"
 import {
-  AlertTriangle, Boxes, Check, FileCode2, Layers3, Loader2, Palette,
+  AlertTriangle, Boxes, Check, FileCode2, KeyRound, Layers3, Loader2, Palette,
   FileUp, Plus, RefreshCw, Save, Settings2, ShieldCheck, Trash2, UsersRound, Workflow,
 } from "lucide-react"
 import { api } from "@/lib/api"
@@ -45,7 +44,8 @@ interface ValidationResult {
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 
 export function CustomizationPage() {
-  const user = useAuth((state) => state.user)
+  const { isAdminActive, verifyAdminPassword, logoutAdmin } = useAuth()
+  const [unlocked, setUnlocked] = useState(isAdminActive())
   const [draft, setDraft] = useState<DtsCustomization | null>(null)
   const [original, setOriginal] = useState<DtsCustomization | null>(null)
   const [file, setFile] = useState<ConfigFileView | null>(null)
@@ -79,8 +79,26 @@ export function CustomizationPage() {
     }
   }
 
-  useEffect(() => { if (user?.role === "ADMIN") void load() }, [user?.role])
-  if (user && user.role !== "ADMIN") return <Navigate to="/dashboard" replace />
+  const unlock = async (password: string) => {
+    await verifyAdminPassword(password)
+    setUnlocked(true)
+    void load()
+  }
+
+  // 管理员令牌失效时（401/403）退出管理态，回到密码门禁
+  useEffect(() => {
+    if (!unlocked) return
+    if (!isAdminActive()) {
+      setUnlocked(false)
+      setDraft(null)
+    }
+  }, [isAdminActive, unlocked])
+
+  useEffect(() => { if (unlocked && !draft) void load() }, [unlocked, draft])
+
+  if (!unlocked) {
+    return <AdminGate onUnlock={(password) => void unlock(password)} />
+  }
 
   const saveStructured = async () => {
     if (!draft) return
@@ -144,21 +162,31 @@ export function CustomizationPage() {
         title="接入定制"
         subtitle={`${draft.profile.name} · ${draft.profile.targetTeam || "未指定团队"}`}
         actions={
-          <form
-            className="flex items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void saveStructured()
-            }}
-          >
-            <Button type="button" variant="outline" onClick={() => void load()} disabled={formChanged || yamlChanged}>
-              <RefreshCw className="size-4" /> 重新读取
+          <div className="flex items-center gap-2">
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void saveStructured()
+              }}
+            >
+              <Button type="button" variant="outline" onClick={() => void load()} disabled={formChanged || yamlChanged}>
+                <RefreshCw className="size-4" /> 重新读取
+              </Button>
+              <Button type="submit" disabled={!formChanged || saving}>
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                保存更改
+              </Button>
+            </form>
+            <Button variant="ghost" size="sm" onClick={() => {
+              logoutAdmin()
+              setUnlocked(false)
+              setDraft(null)
+            }}>
+              锁定管理
             </Button>
-            <Button type="submit" disabled={!formChanged || saving}>
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              保存更改
-            </Button>
-          </form>
+            <AdminPasswordDialog />
+          </div>
         }
       />
       <PageBody className="bg-muted/20">
@@ -416,9 +444,9 @@ function OrganizationPanel({ value, onChange }: EditorProps) {
         </div>
       </Section>
 
-      <Section title="账号与责任人" description="角色为开发人员且状态启用的账号会进入责任人下拉框；新账号首次同步时使用部署环境设置的初始密码。">
+      <Section title="账号与责任人" description="这里只维护具备处理/被指定权限的人员（项目负责人、开发人员）。普通问题提出人由统一认证首次登录自动建档，无需在此配置。">
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
-          修改姓名、角色、团队或启用状态后，保存并重启即可同步。已有账号密码不会被覆盖。
+          修改姓名、角色、团队或启用状态后，保存并重启即可同步。角色为开发人员且启用的账号会进入责任人下拉框。
         </div>
         <CsvUserImport value={value} onImport={(users) => setMaster({ ...master, users })} />
         <div className="space-y-3">
@@ -433,7 +461,9 @@ function OrganizationPanel({ value, onChange }: EditorProps) {
                   <Select value={account.role} onValueChange={(role) => updateUser(index, { role })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {value.roles.map((role) => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}
+                      {value.roles
+                        .filter((role) => role.value === "DEVELOPER" || role.value === "LEADER")
+                        .map((role) => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -490,7 +520,7 @@ function CsvUserImport({ value, onImport }: {
   const sample = [
     "工号,用户名,显示姓名,角色,所属团队,头像色,启用",
     "D2001,zhangsan,张三,开发人员,网络安全组,#0891b2,true",
-    "S2002,lisi,李四,问题提出人,network-security,#7c3aed,true",
+    "L2001,lilei,李雷,项目负责人,network-security,#7c3aed,true",
   ].join("\n")
 
   const importCsv = () => {
@@ -681,6 +711,132 @@ function RestartNotice({ file }: { file: ConfigFileView | null }) {
   )
 }
 
+function AdminPasswordDialog() {
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password.length < 6) {
+      toast.error("新密码至少需要 6 位")
+      return
+    }
+    if (password !== confirm) {
+      toast.error("两次输入的密码不一致")
+      return
+    }
+    setSubmitting(true)
+    try {
+      await api.post("/config/customization/admin/password", { password })
+      toast.success("管理员密码已更新，重启后端后生效")
+      setOpen(false)
+      setPassword("")
+      setConfirm("")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "修改失败")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm"><KeyRound className="size-4" /> 修改管理员密码</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>修改管理员密码</DialogTitle>
+          <DialogDescription>
+            设置新的共享管理员密码（BCrypt 哈希写入接入配置，保存后重启后端生效）。
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="new-admin-password">新密码</Label>
+            <Input id="new-admin-password" type="password" value={password}
+              onChange={(e) => setPassword(e.target.value)} placeholder="至少 6 位" required />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="confirm-admin-password">确认新密码</Label>
+            <Input id="confirm-admin-password" type="password" value={confirm}
+              onChange={(e) => setConfirm(e.target.value)} placeholder="再次输入" required />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting && <Loader2 className="size-4 animate-spin" />}
+              保存
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AdminGate({ onUnlock }: { onUnlock: (password: string) => void | Promise<void> }) {
+  const [password, setPassword] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setError("")
+    try {
+      await onUnlock(password)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "验证失败")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="接入定制" subtitle="需要管理员授权后进入" />
+      <div className="flex flex-1 items-start justify-center bg-muted/20 px-4 pt-16">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <KeyRound className="size-4" /> 管理员授权
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              系统已接入统一认证，不维护管理员账号。请输入接入定制的共享管理员密码，验证通过后获得短时管理权限。
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="admin-password">管理员密码</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="输入共享管理员密码"
+                  autoFocus
+                  required
+                />
+              </div>
+              {error && (
+                <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>
+              )}
+              <Button type="submit" disabled={submitting || !password}>
+                {submitting && <Loader2 className="size-4 animate-spin" />}
+                验证并进入
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  )
+}
+
 function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
     <Card>
@@ -803,6 +959,9 @@ function resolveCsvRole(input: string, config: DtsCustomization) {
   const role = config.roles.find((item) =>
     item.value.toLowerCase() === normalized.toLowerCase() || item.label === normalized)
   if (!role) throw new Error(`未知角色：${input}`)
+  if (role.value !== "DEVELOPER" && role.value !== "LEADER") {
+    throw new Error(`角色「${role.label}」不可配置，接入配置仅支持开发人员/项目负责人（普通提出人由统一认证自动建档）`)
+  }
   return role.value
 }
 

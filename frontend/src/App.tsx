@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
 import { useAuth } from "@/store/auth"
-import { setOnUnauthorized } from "@/lib/api"
+import { setOnAdminUnauthorized, setOnUnauthorized } from "@/lib/api"
 import { AppLayout } from "@/components/app-layout"
 import { LoginPage } from "@/pages/login"
 import { DashboardPage } from "@/pages/dashboard"
@@ -16,17 +16,23 @@ import { CustomizationPage } from "@/pages/customization"
 import { useCustomization } from "@/store/customization"
 
 function Protected({ children }: { children: React.ReactNode }) {
-  const { token, user } = useAuth()
+  const { token, user, mode, authError, loading } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     setOnUnauthorized(() => navigate("/login"))
-  }, [navigate])
+    // 管理员令牌失效时清除管理员会话，回到管理页的密码门禁
+    setOnAdminUnauthorized(() => useAuth.getState().logoutAdmin())
+    // 确认当前认证方式（local / oauth）
+    if (!mode) void useAuth.getState().fetchMode()
+  }, [navigate, mode])
 
-  if (!token) return <Navigate to="/login" replace />
+  // local 模式必须有本地 token；oauth 模式身份由代理头决定
+  if (!token && mode === "local") return <Navigate to="/login" replace />
+  if (!user && authError) return <Navigate to="/login" replace />
   if (!user) {
-    // 已有 token 但还没拉到用户，触发 hydrate
-    useAuth.getState().hydrate()
+    // 还没拉到用户，触发 hydrate（oauth 模式下后端靠代理头认证）
+    if (!loading) useAuth.getState().hydrate()
     return <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">加载中…</div>
   }
   return <AppLayout>{children}</AppLayout>

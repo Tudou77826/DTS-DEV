@@ -40,7 +40,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         claims.get("username", String.class),
                         claims.get("displayName", String.class),
                         claims.get("role", String.class),
-                        claims.get("employeeNo", String.class));
+                        claims.get("employeeNo", String.class),
+                        claims.get("avatarColor", String.class));
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

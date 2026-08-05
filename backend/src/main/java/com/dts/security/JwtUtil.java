@@ -25,7 +25,7 @@ public class JwtUtil {
         this.expirationMs = expirationMs;
     }
 
-    public String generate(Long userId, String username, String displayName, String role, String employeeNo) {
+    public String generate(Long userId, String username, String displayName, String role, String employeeNo, String avatarColor) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
@@ -33,10 +33,32 @@ public class JwtUtil {
                 .claim("displayName", displayName)
                 .claim("role", role)
                 .claim("employeeNo", employeeNo)
+                .claim("avatarColor", avatarColor)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
                 .signWith(key)
                 .compact();
+    }
+
+    /** 签发短时管理员令牌（用于接入定制页的共享密码门禁）。 */
+    public String generateAdminToken(String secret, long ttlMs) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject("admin")
+                .claim("scope", "ADMIN")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + ttlMs))
+                .signWith(key)
+                .compact();
+    }
+
+    public boolean isAdminToken(String token) {
+        try {
+            Claims claims = parse(token);
+            return "ADMIN".equals(claims.get("scope", String.class));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public Claims parse(String token) {

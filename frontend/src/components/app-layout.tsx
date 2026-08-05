@@ -21,7 +21,6 @@ interface NavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   feature?: string
-  adminOnly?: boolean
 }
 
 const NAV_MAIN: NavItem[] = [
@@ -34,7 +33,8 @@ const NAV_MAIN: NavItem[] = [
 const NAV_OTHER: NavItem[] = [
   { to: "/stats", label: "统计看板", icon: BarChart3 },
   { to: "/config", label: "基础配置", icon: Settings },
-  { to: "/customization", label: "接入定制", icon: SlidersHorizontal, adminOnly: true },
+  // 接入定制入口对所有登录用户可见，进入后通过共享管理员密码门禁
+  { to: "/customization", label: "接入定制", icon: SlidersHorizontal },
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -76,7 +76,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <SideLink key={item.to} {...item} />
           ))}
           <div className="my-2 h-px bg-sidebar-border" />
-          {NAV_OTHER.filter((item) => !item.adminOnly || user?.role === "ADMIN").map((item) => (
+          {NAV_OTHER.map((item) => (
             <SideLink key={item.to} {...item} />
           ))}
         </nav>

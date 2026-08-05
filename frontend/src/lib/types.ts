@@ -19,11 +19,22 @@ export interface User {
   employeeNo: string
   username: string
   displayName: string
-  role: "SUBMITTER" | "DEVELOPER" | "LEADER" | "ADMIN"
+  role: "SUBMITTER" | "DEVELOPER" | "LEADER"
   email?: string
   phone?: string
   avatarColor?: string
   active?: boolean
+}
+
+/** 认证方式：local = 本地账号密码；oauth = 反向代理注入用户头 */
+export interface AuthMode {
+  mode: "local" | "oauth"
+  localLoginEnabled: boolean
+}
+
+export interface AdminVerifyResult {
+  token: string
+  expiresInMs: number
 }
 
 export interface ProductModule { id: number; productId?: number; name: string; description?: string; active?: boolean }
@@ -72,6 +83,10 @@ export interface DtsCustomization {
     assignee: string
   }
   roles: Array<{ value: string; label: string; color?: string }>
+  /** 接入定制管理入口的共享管理员密码（BCrypt 哈希，不在页面回显） */
+  admin?: {
+    passwordHash?: string
+  }
   issue: {
     code: { prefix: string; datePattern: string; sequenceDigits: number }
     defaultPriority: Priority

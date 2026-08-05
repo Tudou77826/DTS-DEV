@@ -123,8 +123,8 @@ public class AttachmentService {
     public void delete(Long id) {
         IssueAttachment attachment = require(id);
         LoginUser user = SecurityUtil.current();
-        if (!user.isAdmin() && !user.getId().equals(attachment.getUploaderId())) {
-            throw new BusinessException(403, "仅上传者或管理员可删除附件");
+        if (!user.getId().equals(attachment.getUploaderId())) {
+            throw new BusinessException(403, "仅上传者本人可删除附件");
         }
         attachmentMapper.deleteById(id);
         try {

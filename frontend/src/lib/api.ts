@@ -2,7 +2,12 @@ import type { ApiResponse } from "./types"
 
 const BASE = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`
 
+/** 管理员令牌请求头 */
+export const ADMIN_TOKEN_HEADER = "X-Admin-Token"
+export const ADMIN_TOKEN_KEY = "dts-admin-token"
+
 let onUnauthorized: (() => void) | null = null
+let onAdminUnauthorized: (() => void) | null = null
 
 export class ApiError extends Error {
   readonly status: number
@@ -18,6 +23,10 @@ export function setOnUnauthorized(cb: () => void) {
   onUnauthorized = cb
 }
 
+export function setOnAdminUnauthorized(cb: () => void) {
+  onAdminUnauthorized = cb
+}
+
 function getToken() {
   return localStorage.getItem("dts-token")
 }
@@ -28,6 +37,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) }
   if (!isFormData) headers["Content-Type"] = "application/json"
   if (token) headers["Authorization"] = `Bearer ${token}`
+
+  // 管理员令牌：存在则附加到接入定制相关的管理请求
+  const adminToken = localStorage.getItem(ADMIN_TOKEN_KEY)
+  const isAdminPath = path.includes("/customization/admin")
+  if (adminToken && (isAdminPath || path.startsWith("/config"))) {
+    headers[ADMIN_TOKEN_HEADER] = adminToken
+  }
 
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
 
@@ -44,6 +60,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (body.code !== 0) {
+    // 管理员令牌失效/无权限：清除管理员会话
+    if (res.status === 401 || res.status === 403) {
+      if (isAdminPath) onAdminUnauthorized?.()
+    }
     throw new ApiError(body.message || `请求失败 (${res.status})`, res.status)
   }
   return body.data

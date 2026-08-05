@@ -46,4 +46,11 @@ public class AuthDtos {
         private String phone;
         private String avatarColor;
     }
+
+    @Data
+    public static class AuthMode {
+        /** local = 本地账号密码；oauth = 反向代理注入用户头 */
+        private String mode;
+        private boolean localLoginEnabled;
+    }
 }

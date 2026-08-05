@@ -187,7 +187,7 @@ export function IssueListPage() {
         {batchEnabled && selected.length > 0 && (
           <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
             <span className="mr-auto text-sm font-medium">已选择 {selected.length} 项</span>
-            {(user?.role === "LEADER" || user?.role === "ADMIN") && (
+            {user?.role === "LEADER" && (
               <Button size="sm" onClick={() => setAssignOpen(true)}><Users className="size-4" /> 批量指派</Button>
             )}
             <Button size="sm" variant="outline" onClick={batchClose}><Archive className="size-4" /> 批量关闭</Button>

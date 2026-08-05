@@ -35,7 +35,7 @@ public class CustomizationAdminService {
             "targetTeam", "targetSystem", "productName", "shortName", "loginTitle",
             "loginSubtitle", "primaryColor", "showDemoAccounts", "demoAccountHint", "defaultPriority",
             "datePattern", "sequenceDigits", "masterData", "syncMode",
-            "employeeNo", "displayName", "avatarColor",
+            "employeeNo", "displayName", "avatarColor", "passwordHash",
             "batchOperations", "excelExport", "richText");
 
     @Value("${app.customization.external-file:./config/dts-customization.yml}")
@@ -138,6 +138,7 @@ public class CustomizationAdminService {
             requireMap(customization, "branding", errors);
             Map<?, ?> issue = requireMap(customization, "issue", errors);
             Map<?, ?> masterData = requireMap(customization, "master-data", errors);
+            validateAdmin(customization.get("admin"), errors);
             if (issue != null) validateIssue(issue, errors);
             if (masterData != null) validateMasterData(masterData, customization.get("roles"), errors);
             return errors;
@@ -256,8 +257,7 @@ public class CustomizationAdminService {
         return values;
     }
 
-    private void validateMasterData(Map<?, ?> masterData, Object rolesValue, List<String> errors) {
-        Set<String> roleValues = optionValues(rolesValue, "roles", errors);
+    private void validateMasterData(Map<?, ?> masterData, Object rolesValue, List<String> errors) {        Set<String> roleValues = optionValues(rolesValue, "roles", errors);
         Set<String> teamKeys = new HashSet<>();
         Object teamsValue = masterData.get("teams");
         if (!(teamsValue instanceof List<?> teams) || teams.isEmpty()) {
@@ -277,7 +277,7 @@ public class CustomizationAdminService {
 
         Set<String> usernames = new HashSet<>();
         Set<String> employeeNos = new HashSet<>();
-        boolean hasAdmin = false;
+        boolean hasLeader = false;
         boolean hasDeveloper = false;
         Object usersValue = masterData.get("users");
         if (!(usersValue instanceof List<?> users) || users.isEmpty()) {
@@ -303,11 +303,24 @@ public class CustomizationAdminService {
             if (!roleValues.contains(role)) errors.add("用户 " + username + " 使用了未知角色: " + role);
             if (team != null && !teamKeys.contains(team)) errors.add("用户 " + username + " 引用了未知团队: " + team);
             boolean active = !Boolean.FALSE.equals(user.get("active"));
-            if (active && "ADMIN".equals(role)) hasAdmin = true;
+            if (active && "LEADER".equals(role)) hasLeader = true;
             if (active && "DEVELOPER".equals(role)) hasDeveloper = true;
         }
-        if (!hasAdmin) errors.add("至少需要一个启用的 ADMIN 用户，避免管理员被锁定");
+        if (!hasLeader) errors.add("至少需要一个启用的 LEADER 用户作为项目负责人");
         if (!hasDeveloper) errors.add("至少需要一个启用的 DEVELOPER 用户作为责任人");
+    }
+
+    private void validateAdmin(Object adminValue, List<String> errors) {
+        if (!(adminValue instanceof Map<?, ?> admin)) {
+            errors.add("缺少 admin 节点，请配置管理员共享密码（admin.password-hash）");
+            return;
+        }
+        String passwordHash = stringValue(admin.get("password-hash"));
+        if (passwordHash == null) {
+            errors.add("admin.password-hash 不能为空，请配置管理员共享密码");
+        } else if (!passwordHash.startsWith("$2")) {
+            errors.add("admin.password-hash 必须是 BCrypt 哈希（$2a/$2b/$2y 开头）");
+        }
     }
 
     private Map<?, ?> requireMap(Map<?, ?> parent, String key, List<String> errors) {

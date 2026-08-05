@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * 系统用户（问题提出人 / 开发人员 / 项目负责人 / 管理员）。
+ * 系统用户（问题提出人 / 开发人员 / 项目负责人）。
  */
 @Getter
 @Setter
@@ -26,9 +26,10 @@ public class User extends BaseEntity {
     /** 显示名/姓名 */
     private String displayName;
 
+    /** 本地密码（BCrypt 哈希）；统一认证建档用户可为空 */
     private String password;
 
-    private String role; // SUBMITTER / DEVELOPER / LEADER / ADMIN
+    private String role; // SUBMITTER / DEVELOPER / LEADER
 
     private String email;
 
