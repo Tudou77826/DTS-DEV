@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Loader2 } from "lucide-react"
+import { Loader2, Paperclip, X } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
@@ -27,6 +27,8 @@ export function IssueNewPage() {
   const [dict, setDict] = useState<Dictionaries | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
+  const [files, setFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     moduleId: "",
     title: "",
@@ -103,6 +105,21 @@ export function IssueNewPage() {
         navigate(`/issues/${editId}`)
       } else {
         const created = await api.post<Issue>("/issues", payload)
+        if (files.length > 0) {
+          // 问题创建成功后逐个上传所选附件（附件接口依赖 issueId 且为单文件）
+          let failed = 0
+          for (const file of files) {
+            const formData = new FormData()
+            formData.append("sourceType", "ISSUE")
+            formData.append("file", file)
+            try {
+              await api.upload(`/issues/${created.id}/attachments`, formData)
+            } catch {
+              failed++
+            }
+          }
+          if (failed > 0) toast.warning(`问题已创建，但有 ${failed} 个附件上传失败，可在问题详情中补充`)
+        }
         toast.success("问题已创建")
         navigate(`/issues/${created.id}`)
       }
@@ -163,6 +180,44 @@ export function IssueNewPage() {
               <Label>提出人</Label>
               <Input value={user?.displayName || ""} disabled placeholder="当前登录用户" />
             </div>
+            {!isEdit && (
+              <div className="col-span-2 flex flex-col gap-2">
+                <Label>附件（可选）</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    const picked = Array.from(event.target.files ?? [])
+                    setFiles((current) => [...current, ...picked])
+                    if (fileInputRef.current) fileInputRef.current.value = ""
+                  }}
+                />
+                {files.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {files.map((file, index) => (
+                      <span key={index} className="flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
+                        <Paperclip className="size-3 text-muted-foreground" />
+                        <span className="max-w-[180px] truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}
+                          aria-label={`移除 ${file.name}`}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <Button type="button" variant="outline" size="sm" className="w-fit"
+                  onClick={() => fileInputRef.current?.click()}>
+                  <Paperclip className="size-4" /> 选择附件
+                </Button>
+              </div>
+            )}
             <ConfiguredField config={field("module")}>
               <Select value={form.moduleId} onValueChange={(v) => set("moduleId", v)}>
                 <SelectTrigger><SelectValue placeholder={field("module")?.placeholder} /></SelectTrigger>
