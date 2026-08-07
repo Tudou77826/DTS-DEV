@@ -24,6 +24,11 @@
   overflow-x: auto;
   padding: 0.75rem;
 }
+.tiptap img, .rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
 .rich-content a { color: var(--primary); text-decoration: underline; }
 @import "tw-animate-css";
 

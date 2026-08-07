@@ -149,6 +149,7 @@ export function IssueNewPage() {
                     value={form.description}
                     onChange={(value) => set("description", value)}
                     placeholder={field("description")?.placeholder}
+                    enableImages
                   />
                 : <Textarea
                     value={form.description}

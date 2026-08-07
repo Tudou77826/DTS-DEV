@@ -12,11 +12,6 @@ export function IssueMeta({ issue }: { issue: Issue }) {
             dangerouslySetInnerHTML={{ __html: issue.description }}
           />
         </Section>
-        {issue.searchKeywords && (
-          <Section title="查询关键字">
-            <p className="whitespace-pre-wrap font-mono text-xs">{issue.searchKeywords}</p>
-          </Section>
-        )}
         {issue.latestProgress && (
           <Section title="当前进展">
             <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-xs">{issue.latestProgress}</p>
