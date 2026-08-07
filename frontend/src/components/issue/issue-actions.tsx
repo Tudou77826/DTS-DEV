@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { toast } from "sonner"
 import type { Dictionaries, Issue, IssueStatus } from "@/lib/types"
 import { useCustomization } from "@/store/customization"
@@ -94,14 +95,13 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
         <div className="grid gap-4 py-2">
           <div className="flex flex-col gap-2">
             <Label>责任人</Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId}>
-              <SelectTrigger><SelectValue placeholder="选择开发人员" /></SelectTrigger>
-              <SelectContent>
-                {dict?.developers.map((u) => (
-                  <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={assigneeId}
+              onChange={setAssigneeId}
+              options={(dict?.developers || []).map((u) => ({ value: String(u.id), label: u.displayName }))}
+              placeholder="选择开发人员"
+              searchPlaceholder="搜索责任人…"
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label>协同处理人（可多选）</Label>
@@ -121,14 +121,15 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
                 })}
               </div>
             )}
-            <Select value="" onValueChange={(v) => { if (v) toggleCollaborator(Number(v)) }}>
-              <SelectTrigger><SelectValue placeholder="添加协同人…" /></SelectTrigger>
-              <SelectContent>
-                {collaboratorOptions
-                  .filter((u) => !collaboratorIds.includes(u.id))
-                  .map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value=""
+              onChange={(v) => { if (v) toggleCollaborator(Number(v)) }}
+              options={collaboratorOptions
+                .filter((u) => !collaboratorIds.includes(u.id))
+                .map((u) => ({ value: String(u.id), label: u.displayName }))}
+              placeholder="添加协同人…"
+              searchPlaceholder="搜索协同人…"
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label>优先级</Label>

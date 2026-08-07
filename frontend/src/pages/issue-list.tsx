@@ -11,6 +11,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
 import { Combobox } from "@/components/ui/combobox"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table"
@@ -195,27 +196,42 @@ export function IssueListPage() {
                 {dict?.versions.map((v) => <SelectItem key={v.id} value={v.version}>{v.version}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={assigneeId} onValueChange={(v) => update({ assigneeId: v === "ALL" ? "" : v, page: null })}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="责任人" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">全部责任人</SelectItem>
-                {dict?.developers.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={domainId} onValueChange={(v) => update({ domainId: v === "ALL" ? "" : v, page: null })}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="问题领域" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">全部领域</SelectItem>
-                {dict?.domains.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={submitterId} onValueChange={(v) => update({ submitterId: v === "ALL" ? "" : v, page: null })}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="提出人" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">全部提出人</SelectItem>
-                {dict?.users.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="w-[150px]">
+              <SearchableSelect
+                value={assigneeId}
+                onChange={(v) => update({ assigneeId: v, page: null })}
+                options={[
+                  { value: "", label: "全部责任人" },
+                  ...(dict?.developers || []).map((u) => ({ value: String(u.id), label: u.displayName })),
+                ]}
+                placeholder="责任人"
+                searchPlaceholder="搜索责任人…"
+              />
+            </div>
+            <div className="w-[150px]">
+              <SearchableSelect
+                value={domainId}
+                onChange={(v) => update({ domainId: v, page: null })}
+                options={[
+                  { value: "", label: "全部领域" },
+                  ...(dict?.domains || []).map((d) => ({ value: String(d.id), label: d.name })),
+                ]}
+                placeholder="问题领域"
+                searchPlaceholder="搜索领域…"
+              />
+            </div>
+            <div className="w-[150px]">
+              <SearchableSelect
+                value={submitterId}
+                onChange={(v) => update({ submitterId: v, page: null })}
+                options={[
+                  { value: "", label: "全部提出人" },
+                  ...(dict?.users || []).map((u) => ({ value: String(u.id), label: u.displayName })),
+                ]}
+                placeholder="提出人"
+                searchPlaceholder="搜索提出人…"
+              />
+            </div>
             <Input
               className="w-[145px]"
               value={investigateVersionName}
@@ -441,14 +457,13 @@ function BatchAssignDialog({
         <div className="grid gap-3 py-2">
           <div className="flex flex-col gap-2">
             <Label>责任人</Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId}>
-              <SelectTrigger><SelectValue placeholder="选择开发人员" /></SelectTrigger>
-              <SelectContent>
-                {dict?.developers.map((developer) => (
-                  <SelectItem key={developer.id} value={String(developer.id)}>{developer.displayName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={assigneeId}
+              onChange={setAssigneeId}
+              options={(dict?.developers || []).map((d) => ({ value: String(d.id), label: d.displayName }))}
+              placeholder="选择开发人员"
+              searchPlaceholder="搜索责任人…"
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label>协同处理人（可多选，可选）</Label>
@@ -468,14 +483,15 @@ function BatchAssignDialog({
                 })}
               </div>
             )}
-            <Select value="" onValueChange={(v) => { if (v) toggleCollaborator(Number(v)) }}>
-              <SelectTrigger><SelectValue placeholder="添加协同人…" /></SelectTrigger>
-              <SelectContent>
-                {collaboratorOptions
-                  .filter((u) => !collaboratorIds.includes(u.id))
-                  .map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value=""
+              onChange={(v) => { if (v) toggleCollaborator(Number(v)) }}
+              options={collaboratorOptions
+                .filter((u) => !collaboratorIds.includes(u.id))
+                .map((u) => ({ value: String(u.id), label: u.displayName }))}
+              placeholder="添加协同人…"
+              searchPlaceholder="搜索协同人…"
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label>优先级（可选）</Label>

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { Combobox } from "@/components/ui/combobox"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
@@ -228,15 +229,16 @@ export function IssueNewPage() {
               />
             </ConfiguredField>
             <ConfiguredField config={{ label: "指定处理人", required: false, visible: true }}>
-              <Select value={form.assigneeId || "none"} onValueChange={(v) => set("assigneeId", v === "none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="选择处理人（可选）" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">暂不指定</SelectItem>
-                  {dict?.developers.map((developer) => (
-                    <SelectItem key={developer.id} value={String(developer.id)}>{developer.displayName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.assigneeId}
+                onChange={(v) => set("assigneeId", v)}
+                options={[
+                  { value: "", label: "暂不指定" },
+                  ...(dict?.developers || []).map((d) => ({ value: String(d.id), label: d.displayName })),
+                ]}
+                placeholder="选择处理人（可选）"
+                searchPlaceholder="搜索处理人…"
+              />
             </ConfiguredField>
 
             <ConfiguredField config={field("envInfo")} className="col-span-2">

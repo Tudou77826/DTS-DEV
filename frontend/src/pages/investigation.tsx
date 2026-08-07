@@ -8,13 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-} from "@/components/ui/select"
-import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter, DialogClose,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { toast } from "sonner"
 import { INVESTIGATION_STATUS_META } from "@/lib/labels"
 import type { Dictionaries, VersionInvestigation } from "@/lib/types"
@@ -144,12 +142,16 @@ function GenerateDialog({
           </div>
           <div className="flex flex-col gap-2">
             <Label>默认排查人（可选）</Label>
-            <Select value={investigatorId} onValueChange={setInvestigatorId}>
-              <SelectTrigger><SelectValue placeholder="留空则使用问题责任人" /></SelectTrigger>
-              <SelectContent>
-                {dict?.developers.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.displayName}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={investigatorId}
+              onChange={setInvestigatorId}
+              options={[
+                { value: "", label: "留空则使用问题责任人" },
+                ...(dict?.developers || []).map((u) => ({ value: String(u.id), label: u.displayName })),
+              ]}
+              placeholder="选择排查人"
+              searchPlaceholder="搜索排查人…"
+            />
           </div>
         </div>
         <DialogFooter>
