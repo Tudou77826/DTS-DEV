@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Inbox, Loader2, AlertTriangle } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+} from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { PRIORITY_META, formatDateTime } from "@/lib/labels"
@@ -23,6 +26,7 @@ export function MyTasksPage() {
   const [tab, setTab] = useState("all")
   const [data, setData] = useState<PageResult<Issue>>({ list: [], total: 0, page: 0, size: 20, totalPages: 0 })
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     setLoading(true)
@@ -58,34 +62,59 @@ export function MyTasksPage() {
                 该分类下暂无任务
               </div>
             ) : (
-              <div className="divide-y divide-border">
-                {data.list.map((issue) => (
-                  <Link
-                    key={issue.id}
-                    to={`/issues/${issue.id}`}
-                    className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-accent/50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">{issue.code}</span>
-                        {issue.overdue && (
-                          <Badge variant="destructive" className="gap-1 py-0 text-[10px]">
-                            <AlertTriangle className="size-2.5" /> 超期
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="mt-0.5 truncate text-sm font-medium">{issue.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {issue.moduleName} · {formatDateTime(issue.createdAt)}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className={PRIORITY_META[issue.priority as Priority]?.className}>
-                      {PRIORITY_META[issue.priority as Priority]?.label}
-                    </Badge>
-                    <StatusBadge status={issue.status} />
-                  </Link>
-                ))}
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="w-[150px]">编号</TableHead>
+                    <TableHead>标题</TableHead>
+                    <TableHead className="w-[130px]">所属模块</TableHead>
+                    <TableHead className="w-[140px]">来源产品</TableHead>
+                    <TableHead className="w-[140px]">发现版本</TableHead>
+                    <TableHead className="w-[90px]">优先级</TableHead>
+                    <TableHead className="w-[100px]">状态</TableHead>
+                    <TableHead className="w-[150px]">创建时间</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.list.map((issue) => (
+                    <TableRow
+                      key={issue.id}
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/issues/${issue.id}`)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">{issue.code}</span>
+                          {issue.overdue && (
+                            <Badge variant="destructive" className="gap-1 py-0 text-[10px]">
+                              <AlertTriangle className="size-2.5" /> 超期
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/issues/${issue.id}`}
+                          className="line-clamp-1 max-w-[320px] font-medium hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {issue.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{issue.moduleName || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{issue.productName || "-"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.foundVersionName || "-"}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={PRIORITY_META[issue.priority as Priority]?.className}>
+                          {PRIORITY_META[issue.priority as Priority]?.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell><StatusBadge status={issue.status} /></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDateTime(issue.createdAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
