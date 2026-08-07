@@ -17,13 +17,11 @@ import {
 import { toast } from "sonner"
 import type { Dictionaries, Issue, IssueFormFieldConfig, Priority } from "@/lib/types"
 import { htmlToText } from "@/lib/utils"
-import { useAuth } from "@/store/auth"
 
 export function IssueNewPage() {
   const navigate = useNavigate()
   const { id: editId } = useParams<{ id?: string }>()
   const isEdit = Boolean(editId)
-  const { user } = useAuth()
   const [dict, setDict] = useState<Dictionaries | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
@@ -176,10 +174,6 @@ export function IssueNewPage() {
                     rows={8}
                   />}
             </ConfiguredField>
-            <div className="col-span-2 flex flex-col gap-2">
-              <Label>提出人</Label>
-              <Input value={user?.displayName || ""} disabled placeholder="当前登录用户" />
-            </div>
             {!isEdit && (
               <div className="col-span-2 flex flex-col gap-2">
                 <Label>附件（可选）</Label>
