@@ -206,12 +206,16 @@ export function IssueNewPage() {
               </Select>
             </ConfiguredField>
             <ConfiguredField config={field("foundVersion")}>
-              <Combobox
-                value={form.foundVersionName}
-                onChange={(value) => set("foundVersionName", value)}
-                options={(dict?.versions || []).map((v) => ({ value: v.version, label: v.version }))}
-                placeholder={field("foundVersion")?.placeholder || "选择或输入版本号"}
-              />
+              <Select value={form.foundVersionName || "none"} onValueChange={(v) => set("foundVersionName", v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder={field("foundVersion")?.placeholder} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">请选择版本</SelectItem>
+                  {form.foundVersionName && !(dict?.versions.some((v) => v.version === form.foundVersionName)) && (
+                    <SelectItem value={form.foundVersionName}>{form.foundVersionName}</SelectItem>
+                  )}
+                  {dict?.versions.map((v) => <SelectItem key={v.id} value={v.version}>{v.version}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </ConfiguredField>
             <ConfiguredField config={field("priority")}>
               <Select value={form.priority} onValueChange={(v) => set("priority", v)}>

@@ -133,7 +133,7 @@ dts:
           visible: true
         foundVersion:
           label: 发现版本
-          placeholder: 选择或输入版本号
+          placeholder: 选择版本号
           visible: true
         priority:
           label: 优先级

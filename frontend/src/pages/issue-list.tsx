@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import {
   Search, RotateCcw, ChevronLeft, ChevronRight, AlertTriangle, Download, Users, Archive, X,
 } from "lucide-react"
@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
+import {
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+} from "@/components/ui/table"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatusBadge } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +31,7 @@ const STATUS_OPTIONS = Object.entries(STATUS_META).map(([k, v]) => ({ value: k, 
 
 export function IssueListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [dict, setDict] = useState<Dictionaries | null>(null)
   const [data, setData] = useState<PageResult<Issue>>({ list: [], total: 0, page: 1, size: 20, totalPages: 0 })
   const [loading, setLoading] = useState(false)
@@ -168,12 +173,14 @@ export function IssueListPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              className="w-[145px]"
-              value={productName}
-              onChange={(event) => update({ productName: event.target.value, page: null })}
-              placeholder="产品名称"
-            />
+            <div className="min-w-[200px] flex-1">
+              <Combobox
+                value={productName}
+                onChange={(value) => update({ productName: value, page: null })}
+                options={(dict?.products || []).map((p) => ({ value: p.name, label: p.name }))}
+                placeholder="产品名称"
+              />
+            </div>
             <Select value={moduleId} onValueChange={(v) => update({ moduleId: v === "ALL" ? "" : v, page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="模块" /></SelectTrigger>
               <SelectContent>
@@ -181,12 +188,13 @@ export function IssueListPage() {
                 {dict?.modules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input
-              className="w-[155px]"
-              value={foundVersionName}
-              onChange={(event) => update({ foundVersionName: event.target.value, page: null })}
-              placeholder="发现版本"
-            />
+            <Select value={foundVersionName || "ALL"} onValueChange={(v) => update({ foundVersionName: v === "ALL" ? "" : v, page: null })}>
+              <SelectTrigger className="w-[155px]"><SelectValue placeholder="发现版本" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部版本</SelectItem>
+                {dict?.versions.map((v) => <SelectItem key={v.id} value={v.version}>{v.version}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={assigneeId} onValueChange={(v) => update({ assigneeId: v === "ALL" ? "" : v, page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="责任人" /></SelectTrigger>
               <SelectContent>
@@ -262,20 +270,40 @@ export function IssueListPage() {
             ) : data.list.length === 0 ? (
               <div className="px-5 py-12 text-center text-sm text-muted-foreground">没有匹配的问题</div>
             ) : (
-              <div className="divide-y divide-border">
-                {batchEnabled && <div className="flex items-center gap-3 bg-muted/30 px-5 py-2 text-xs text-muted-foreground">
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="选择当前页全部问题"
-                    className="size-4 rounded border-border accent-primary" />
-                  <span>选择当前页全部问题</span>
-                </div>}
-                {data.list.map((issue) => (
-                  <div key={issue.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-accent/50">
-                    {batchEnabled && <input type="checkbox" checked={selected.includes(issue.id)} onChange={() => toggleOne(issue.id)}
-                      aria-label={`选择 ${issue.code}`} className="size-4 shrink-0 rounded border-border accent-primary" />
-                    }
-                    <Link to={`/issues/${issue.id}`} className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    {batchEnabled && (
+                      <TableHead className="w-10">
+                        <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="选择当前页全部问题"
+                          className="size-4 rounded border-border accent-primary" />
+                      </TableHead>
+                    )}
+                    <TableHead className="w-[150px]">编号</TableHead>
+                    <TableHead>标题</TableHead>
+                    <TableHead className="w-[130px]">所属模块</TableHead>
+                    <TableHead className="w-[140px]">来源产品</TableHead>
+                    <TableHead className="w-[140px]">发现版本</TableHead>
+                    <TableHead className="w-[90px]">优先级</TableHead>
+                    <TableHead className="w-[100px]">状态</TableHead>
+                    <TableHead className="w-[110px]">责任人</TableHead>
+                    <TableHead className="w-[150px]">创建时间</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.list.map((issue) => (
+                    <TableRow
+                      key={issue.id}
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/issues/${issue.id}`)}
+                    >
+                      {batchEnabled && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={selected.includes(issue.id)} onChange={() => toggleOne(issue.id)}
+                            aria-label={`选择 ${issue.code}`} className="size-4 rounded border-border accent-primary" />
+                        </TableCell>
+                      )}
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-muted-foreground">{issue.code}</span>
                           {issue.overdue && (
@@ -284,33 +312,40 @@ export function IssueListPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="mt-0.5 truncate text-sm font-medium">{issue.title}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          {issue.moduleName && <span>{issue.moduleName}</span>}
-                          {issue.productName && <span>· {issue.productName}</span>}
-                          {issue.foundVersionName && <span>· {issue.foundVersionName}</span>}
-                          <span>· {formatDateTime(issue.createdAt)}</span>
-                        </div>
-                      </div>
-                      <Badge variant="secondary" className={PRIORITY_META[issue.priority as Priority]?.className}>
-                        {PRIORITY_META[issue.priority as Priority]?.label}
-                      </Badge>
-                      <StatusBadge status={issue.status as IssueStatus} />
-                      <div className="flex w-24 items-center justify-end gap-1.5">
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/issues/${issue.id}`}
+                          className="line-clamp-1 max-w-[320px] font-medium hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {issue.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{issue.moduleName || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{issue.productName || "-"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.foundVersionName || "-"}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={PRIORITY_META[issue.priority as Priority]?.className}>
+                          {PRIORITY_META[issue.priority as Priority]?.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell><StatusBadge status={issue.status as IssueStatus} /></TableCell>
+                      <TableCell>
                         {issue.assigneeName ? (
-                          <>
+                          <div className="flex items-center gap-1.5">
                             <UserAvatar name={issue.assigneeName} color={issue.assigneeColor} className="size-6" />
-                            <span className="hidden text-xs lg:inline">{issue.assigneeName}</span>
-                          </>
+                            <span className="truncate text-xs">{issue.assigneeName}</span>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">未分配</span>
                         )}
-                      </div>
-                      </div>
-                    </Link>
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDateTime(issue.createdAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
 
             {/* 分页 */}

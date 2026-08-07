@@ -114,7 +114,7 @@ dts:
           visible: true
         foundVersion:
           label: 发现版本
-          placeholder: 选择或输入版本号，例如 V500R020C10
+          placeholder: 选择版本号
           required: false
           visible: true
         priority:

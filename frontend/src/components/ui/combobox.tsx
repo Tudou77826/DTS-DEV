@@ -51,7 +51,8 @@ export function Combobox({
           <button
             type="button"
             tabIndex={-1}
-            onMouseDown={(e) => { e.preventDefault(); setOpen((v) => !v) }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
             className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center text-muted-foreground hover:text-foreground"
             aria-label="展开选项"
           >
@@ -62,7 +63,6 @@ export function Combobox({
       <PopoverContent
         align="start"
         sideOffset={4}
-        onOpenAutoFocus={(e) => e.preventDefault()}
         className="w-full min-w-[var(--radix-popover-trigger-width)] p-0"
       >
         <div className="border-b border-border px-2 py-1.5">
