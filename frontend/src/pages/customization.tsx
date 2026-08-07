@@ -1030,7 +1030,7 @@ const TERM_LABEL: Record<string, string> = {
 
 const FEATURE_LABEL: Record<string, string> = {
   attachments: "附件", relations: "问题关联", notifications: "站内通知",
-  investigations: "版本排查", batchOperations: "批量操作", "batch-operations": "批量操作",
+  batchOperations: "批量操作", "batch-operations": "批量操作",
   excelExport: "Excel 导出", "excel-export": "Excel 导出",
   richText: "富文本描述", "rich-text": "富文本描述",
 }

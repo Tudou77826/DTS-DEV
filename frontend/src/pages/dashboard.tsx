@@ -107,9 +107,6 @@ export function DashboardPage() {
                   <Link to="/issues?overdue=1" className="text-sm text-red-600 hover:underline">
                     → 查看超期问题（{overview.overdue}）
                   </Link>
-                  <Link to="/investigations" className="text-sm text-violet-600 hover:underline">
-                    → 版本排查进度
-                  </Link>
                   <Link to="/stats" className="text-sm text-muted-foreground hover:underline">
                     → 统计看板
                   </Link>

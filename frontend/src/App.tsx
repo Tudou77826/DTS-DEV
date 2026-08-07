@@ -9,7 +9,6 @@ import { IssueListPage } from "@/pages/issue-list"
 import { IssueNewPage } from "@/pages/issue-new"
 import { IssueDetailPage } from "@/pages/issue-detail"
 import { MyTasksPage } from "@/pages/my-tasks"
-import { InvestigationPage } from "@/pages/investigation"
 import { StatsPage } from "@/pages/stats"
 import { ConfigPage } from "@/pages/config"
 import { FeedbackPage } from "@/pages/feedback"
@@ -52,7 +51,6 @@ export default function App() {
       <Route path="/issues/:id" element={<Protected><IssueDetailPage /></Protected>} />
       <Route path="/issues/:id/edit" element={<Protected><IssueNewPage /></Protected>} />
       <Route path="/my-tasks" element={<Protected><MyTasksPage /></Protected>} />
-      <Route path="/investigations" element={<Protected><InvestigationPage /></Protected>} />
       <Route path="/stats" element={<Protected><StatsPage /></Protected>} />
       <Route path="/config" element={<Protected><ConfigPage /></Protected>} />
       <Route path="/feedback" element={<Protected><FeedbackPage /></Protected>} />

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom"
 import {
   LayoutDashboard, ListChecks, Inbox, ClipboardList,
-  GitBranch, BarChart3, Settings, LogOut, Moon, Sun, Plus, SlidersHorizontal, MessageSquareText,
+  BarChart3, Settings, LogOut, Moon, Sun, Plus, SlidersHorizontal, MessageSquareText,
 } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 import { useAuth } from "@/store/auth"
@@ -27,7 +27,6 @@ const NAV_MAIN: NavItem[] = [
   { to: "/dashboard", label: "工作台", icon: LayoutDashboard },
   { to: "/issues", label: "问题列表", icon: ListChecks },
   { to: "/my-tasks", label: "我的任务", icon: Inbox },
-  { to: "/investigations", label: "版本排查", icon: GitBranch, feature: "investigations" },
 ]
 
 const NAV_OTHER: NavItem[] = [

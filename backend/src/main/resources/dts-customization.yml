@@ -180,7 +180,6 @@ dts:
       attachments: true
       relations: true
       notifications: true
-      investigations: true
       batch-operations: true
       excel-export: true
       rich-text: true

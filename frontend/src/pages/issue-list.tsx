@@ -54,7 +54,6 @@ export function IssueListPage() {
   const submitterId = searchParams.get("submitterId") || ""
   const createdFrom = searchParams.get("createdFrom") || ""
   const createdTo = searchParams.get("createdTo") || ""
-  const investigateVersionName = searchParams.get("investigateVersionName") || ""
   const page = parseInt(searchParams.get("page") || "1")
   const overdueOnly = searchParams.get("overdue") === "1"
 
@@ -82,7 +81,6 @@ export function IssueListPage() {
       if (submitterId) params.set("submitterId", submitterId)
       if (createdFrom) params.set("createdFrom", `${createdFrom}T00:00:00`)
       if (createdTo) params.set("createdTo", `${createdTo}T23:59:59`)
-      if (investigateVersionName) params.set("investigateVersionName", investigateVersionName)
       if (overdueOnly) params.set("overdue", "1")
       const result = await api.get<PageResult<Issue>>(`/issues?${params.toString()}`)
       setData(result)
@@ -91,7 +89,7 @@ export function IssueListPage() {
       setLoading(false)
     }
   }, [keyword, status, moduleId, productName, assigneeId, foundVersionName,
-    domainId, submitterId, createdFrom, createdTo, investigateVersionName, page, overdueOnly])
+    domainId, submitterId, createdFrom, createdTo, page, overdueOnly])
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
   useEffect(() => { load() }, [load])
@@ -110,7 +108,6 @@ export function IssueListPage() {
     if (submitterId) params.set("submitterId", submitterId)
     if (createdFrom) params.set("createdFrom", `${createdFrom}T00:00:00`)
     if (createdTo) params.set("createdTo", `${createdTo}T23:59:59`)
-    if (investigateVersionName) params.set("investigateVersionName", investigateVersionName)
     if (overdueOnly) params.set("overdue", "1")
     return params
   }
@@ -232,12 +229,6 @@ export function IssueListPage() {
                 searchPlaceholder="搜索提出人…"
               />
             </div>
-            <Input
-              className="w-[145px]"
-              value={investigateVersionName}
-              onChange={(event) => update({ investigateVersionName: event.target.value, page: null })}
-              placeholder="排查版本"
-            />
             <Input
               type="date"
               className="w-[140px]"
