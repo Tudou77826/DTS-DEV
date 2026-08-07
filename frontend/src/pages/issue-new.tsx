@@ -30,7 +30,6 @@ export function IssueNewPage() {
     moduleId: "",
     title: "",
     description: "",
-    searchKeywords: "",
     envInfo: "",
     vpnInfo: "",
     domainId: "",
@@ -56,7 +55,6 @@ export function IssueNewPage() {
         moduleId: issue.moduleId ? String(issue.moduleId) : "",
         title: issue.title,
         description: issue.description,
-        searchKeywords: issue.searchKeywords || "",
         envInfo: issue.envInfo || "",
         vpnInfo: issue.vpnInfo || "",
         domainId: issue.domainId ? String(issue.domainId) : "",
@@ -88,7 +86,6 @@ export function IssueNewPage() {
         moduleId: Number(form.moduleId),
         title: form.title.trim(),
         description: form.description,
-        searchKeywords: form.searchKeywords.trim() || undefined,
         envInfo: form.envInfo || undefined,
         vpnInfo: form.vpnInfo || undefined,
         domainId: form.domainId ? Number(form.domainId) : undefined,
@@ -160,15 +157,6 @@ export function IssueNewPage() {
                     rows={8}
                   />}
             </ConfiguredField>
-            <div className="col-span-2 flex flex-col gap-2">
-              <Label>搜索关键字</Label>
-              <Input
-                value={form.searchKeywords}
-                onChange={(e) => set("searchKeywords", e.target.value)}
-                placeholder="便于检索的关键词，多个用空格分隔（可选）"
-                maxLength={255}
-              />
-            </div>
             <div className="col-span-2 flex flex-col gap-2">
               <Label>提出人</Label>
               <Input value={user?.displayName || ""} disabled placeholder="当前登录用户" />
