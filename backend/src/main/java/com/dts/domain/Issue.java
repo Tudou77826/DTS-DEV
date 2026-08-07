@@ -34,6 +34,12 @@ public class Issue extends BaseEntity {
     /** 所属模块 */
     private Long moduleId;
 
+    /** 子模块（选填，如 PL团队） */
+    private String subModule;
+
+    /** DTS 系统问题单号（转已解决时按需填写） */
+    private String dtsTicketNo;
+
     /** 问题标题 */
     private String title;
 
@@ -96,6 +102,9 @@ public class Issue extends BaseEntity {
 
     /** 计划完成时间 */
     private LocalDateTime planFinishAt;
+
+    /** 期望解决时间（提出人创建时填写） */
+    private LocalDateTime expectedFinishAt;
 
     /** 定位开始时间（用于计算定位时长） */
     private LocalDateTime locatedAt;

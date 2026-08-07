@@ -28,6 +28,14 @@ public class IssueDtos {
         private String foundVersionName;
         /** 优先级技术值；为空时使用当前接入配置的默认优先级。 */
         private String priority;
+        /** 指定处理人（非必选，须为启用的开发人员） */
+        private Long assigneeId;
+        /** 子模块（选填，如 PL团队） */
+        private String subModule;
+        /** 期望解决时间 */
+        private LocalDateTime expectedFinishAt;
+        /** DTS 系统问题单号 */
+        private String dtsTicketNo;
     }
 
     /** 查询条件 */

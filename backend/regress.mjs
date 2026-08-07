@@ -30,7 +30,7 @@ r = await req("POST", "/auth/login", { username: dict.developers[0].username, pa
 const DT = r.json.data.token;
 
 console.log("=== 核心闭环 ===");
-r = await req("POST", "/issues", { moduleId: MODID, title: "回归测试问题", description: "回归测试问题", priority: "HIGH" }, T);
+r = await req("POST", "/issues", { moduleId: MODID, title: "回归测试问题", description: "回归测试问题", vpnInfo: "VPN 信息", priority: "HIGH" }, T);
 const IID = r.json.data.id;
 assert("创建问题", "PENDING_ASSIGN", r.json.data.status);
 
@@ -57,7 +57,7 @@ assert("重新打开（提交人）", "REOPENED", r.json.data.status);
 console.log("\n=== P0: 权限矩阵 ===");
 // 权限矩阵：只有责任人可流转；提交人可关闭/重新打开；其余人（含负责人）不可越权
 // 创建一个问题分配给另一个开发人员，再用 leader 尝试解决（leader 不是责任人，应被拒）
-r = await req("POST", "/issues", { moduleId: MODID, title: "权限测试", description: "权限测试" }, T);
+r = await req("POST", "/issues", { moduleId: MODID, title: "权限测试", description: "权限测试", vpnInfo: "VPN 信息" }, T);
 const PID = r.json.data.id;
 await req("POST", `/issues/${PID}/assign`, { assigneeId: dict.developers[1].id }, T);
 // 由责任人推到定位中
@@ -70,7 +70,7 @@ r = await req("POST", `/issues/${PID}/status`, { status: "RESOLVED", remark: "�
 assert("非责任人不能解决（应失败 403/400）", true, r.json.code !== 0);
 
 console.log("\n=== P0: 问题编号格式 ISS-yyMMdd-NNN ===");
-r = await req("POST", "/issues", { moduleId: MODID, title: "编号格式测试", description: "编号格式测试" }, T);
+r = await req("POST", "/issues", { moduleId: MODID, title: "编号格式测试", description: "编号格式测试", vpnInfo: "VPN 信息" }, T);
 const codeFormat = /^\d{6}-\d{3}$/.test(r.json.data.code.replace("ISS-", ""));
 assert("编号是 ISS-yyMMdd-NNN", true, codeFormat);
 
@@ -116,7 +116,7 @@ assert("批量指派", true, r.json.code === 0 || r.status === 200);
 r = await req("POST", `/issues/batch/close`, { issueIds: [IID], remark: "越权尝试" }, DT);
 assert("非负责人批量关闭被拒（403）", 403, r.json.code);
 // 构造一个已解决问题，再由负责人批量关闭
-r = await req("POST", "/issues", { moduleId: MODID, title: "批量关闭测试", description: "批量关闭测试" }, T);
+r = await req("POST", "/issues", { moduleId: MODID, title: "批量关闭测试", description: "批量关闭测试", vpnInfo: "VPN 信息" }, T);
 const CID = r.json.data.id;
 await req("POST", `/issues/${CID}/assign`, { assigneeId: DEVID }, T);
 await req("POST", `/issues/${CID}/status`, { status: "LOCATING" }, DT);
@@ -140,7 +140,7 @@ assert("添加关联", true, r.json.code === 0 || r.status === 200);
 
 console.log("\n=== P2: XSS 过滤 ===");
 // ContentSanitizer 是否存在
-r = await req("POST", "/issues", { moduleId: MODID, title: "XSS测试", description: "<script>alert(1)</script><b>正常</b>" }, T);
+r = await req("POST", "/issues", { moduleId: MODID, title: "XSS测试", description: "<script>alert(1)</script><b>正常</b>", vpnInfo: "VPN 信息" }, T);
 const desc = r.json.data?.description || "";
 assert("script 被过滤", true, !desc.includes("<script>"));
 

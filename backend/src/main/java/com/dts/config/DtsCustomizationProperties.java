@@ -131,6 +131,10 @@ public class DtsCustomizationProperties {
         private List<TeamOption> teams = new ArrayList<>();
         private List<UserOption> users = new ArrayList<>();
         private List<String> modules = new ArrayList<>();
+        /** 产品枚举（下拉选项，可按接入团队定制；允许自定义输入不受此限制） */
+        private List<String> products = new ArrayList<>();
+        /** 版本枚举（下拉选项，可按接入团队定制；允许自定义输入不受此限制） */
+        private List<String> versions = new ArrayList<>();
         private List<DomainOption> domains = new ArrayList<>();
     }
 }

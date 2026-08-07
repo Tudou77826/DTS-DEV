@@ -51,9 +51,12 @@ public class IssueService {
         String title = sanitizeTitle(req.getTitle());
         String description = sanitizeDescription(req.getDescription());
         if (!sanitizer.hasText(description)) throw new BusinessException("问题描述不能为空");
+        validateVpnRequired(req.getVpnInfo());
         Issue issue = Issue.builder()
                 .raisedAt(LocalDateTime.now())
                 .moduleId(req.getModuleId())
+                .subModule(sanitizeOptionalLabel(req.getSubModule(), "子模块"))
+                .dtsTicketNo(sanitizeOptionalLabel(req.getDtsTicketNo(), "DTS 单号"))
                 .title(title)
                 .description(description)
                 .searchKeywords(sanitizer.plainText(req.getSearchKeywords()))
@@ -65,12 +68,24 @@ public class IssueService {
                 .submitterNo(req.getSubmitterNo() != null ? req.getSubmitterNo() : me.getEmployeeNo())
                 .foundVersionName(sanitizeOptionalLabel(req.getFoundVersionName(), "发现版本"))
                 .priority(normalizePriority(req.getPriority()))
+                .expectedFinishAt(req.getExpectedFinishAt())
                 .status(IssueStatus.PENDING_ASSIGN)
                 .collaboratorIds("")
                 .build();
+        if (req.getAssigneeId() != null) {
+            lookup.requireAssignableUser(req.getAssigneeId());
+            issue.setAssigneeId(req.getAssigneeId());
+        }
         insertWithCodeRetry(issue);
 
         logOperation(issue.getId(), me.getId(), "CREATE", "status", null, IssueStatus.PENDING_ASSIGN, "创建问题");
+        if (issue.getAssigneeId() != null) {
+            // 创建时指定了处理人：沿用分配逻辑，直接进入待定位并通知处理人
+            applyStatus(issue, IssueStatus.PENDING_LOCATE, me.getId(), "创建时指定处理人");
+            issueMapper.updateById(issue);
+            notificationService.notifyUsers(List.of(issue.getAssigneeId()), "ASSIGN",
+                    "问题已分配：" + issue.getCode(), issue.getTitle(), "/issues/" + issue.getId());
+        }
         return toVo(issue);
     }
 
@@ -106,7 +121,17 @@ public class IssueService {
         }
         if (req.getSearchKeywords() != null) issue.setSearchKeywords(sanitizer.plainText(req.getSearchKeywords()));
         if (req.getEnvInfo() != null) issue.setEnvInfo(sanitizer.plainText(req.getEnvInfo()));
-        if (req.getVpnInfo() != null) issue.setVpnInfo(sanitizer.plainText(req.getVpnInfo()));
+        if (req.getVpnInfo() != null) {
+            validateVpnRequired(req.getVpnInfo());
+            issue.setVpnInfo(sanitizer.plainText(req.getVpnInfo()));
+        }
+        if (req.getSubModule() != null) issue.setSubModule(sanitizeOptionalLabel(req.getSubModule(), "子模块"));
+        if (req.getDtsTicketNo() != null) issue.setDtsTicketNo(sanitizeOptionalLabel(req.getDtsTicketNo(), "DTS 单号"));
+        if (req.getExpectedFinishAt() != null) issue.setExpectedFinishAt(req.getExpectedFinishAt());
+        if (req.getAssigneeId() != null) {
+            lookup.requireAssignableUser(req.getAssigneeId());
+            issue.setAssigneeId(req.getAssigneeId());
+        }
         if (req.getDomainId() != null) issue.setDomainId(req.getDomainId());
         if (req.getProductName() != null) {
             issue.setProductName(sanitizeOptionalLabel(req.getProductName(), "来源产品"));
@@ -579,6 +604,16 @@ public class IssueService {
         return value;
     }
 
+    /**
+     * 按接入配置的 vpnInfo 字段定义校验必填（新建/编辑时都生效）。
+     */
+    private void validateVpnRequired(String rawVpnInfo) {
+        DtsCustomizationProperties.FieldOption config = customization.getIssue().getFields().get("vpnInfo");
+        if (config != null && config.isRequired() && !sanitizer.hasText(rawVpnInfo)) {
+            throw new BusinessException(config.getLabel() + "为必填项");
+        }
+    }
+
     private String normalizePriority(String rawPriority) {
         String priority = rawPriority == null || rawPriority.isBlank()
                 ? customization.getIssue().getDefaultPriority()
@@ -624,6 +659,8 @@ public class IssueService {
             vo.setUpdatedAt(i.getUpdatedAt());
             vo.setModuleId(i.getModuleId());
             vo.setModuleName(safeGet(moduleMap, i.getModuleId()));
+            vo.setSubModule(i.getSubModule());
+            vo.setDtsTicketNo(i.getDtsTicketNo());
             vo.setTitle(i.getTitle());
             vo.setDescription(i.getDescription());
             vo.setSearchKeywords(i.getSearchKeywords());
@@ -652,6 +689,7 @@ public class IssueService {
             vo.setResolution(i.getResolution());
             vo.setWorkaround(i.getWorkaround());
             vo.setPlanFinishAt(i.getPlanFinishAt());
+            vo.setExpectedFinishAt(i.getExpectedFinishAt());
             vo.setLocatedAt(i.getLocatedAt());
             vo.setResolvedAt(i.getResolvedAt());
             vo.setClosedAt(i.getClosedAt());

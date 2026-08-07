@@ -18,6 +18,8 @@ public class IssueVo {
 
     private Long moduleId;
     private String moduleName;
+    private String subModule;
+    private String dtsTicketNo;
 
     private String title;
     private String description;
@@ -53,6 +55,7 @@ public class IssueVo {
     private String workaround;
 
     private LocalDateTime planFinishAt;
+    private LocalDateTime expectedFinishAt;
     private LocalDateTime locatedAt;
     private LocalDateTime resolvedAt;
     private LocalDateTime closedAt;

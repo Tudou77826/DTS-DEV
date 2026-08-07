@@ -114,7 +114,7 @@ dts:
           visible: true
         foundVersion:
           label: 发现版本
-          placeholder: 输入版本号，例如 V500R020C10
+          placeholder: 选择或输入版本号，例如 V500R020C10
           required: false
           visible: true
         priority:
@@ -125,6 +125,16 @@ dts:
         vpnInfo:
           label: VPN 信息
           placeholder: VPN 连接信息
+          required: true
+          visible: true
+        expectedFinishAt:
+          label: 期望解决时间
+          placeholder: null
+          required: false
+          visible: true
+        subModule:
+          label: 子模块
+          placeholder: 如 PL团队（可选）
           required: false
           visible: true
         envInfo:
@@ -208,6 +218,14 @@ dts:
       - 流量清洗
       - 日志审计
       - 策略下发
+      products:
+      - 态势感知
+      - 边界安全
+      - 日志审计平台
+      versions:
+      - V500R020C10
+      - V500R020C20
+      - V600R001C00
       domains:
       - name: 功能缺陷
         description: null

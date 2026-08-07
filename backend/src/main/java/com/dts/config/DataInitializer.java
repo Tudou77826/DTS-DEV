@@ -24,6 +24,8 @@ public class DataInitializer implements CommandLineRunner {
     private final UserMapper userMapper;
     private final TeamMapper teamMapper;
     private final ModuleMapper moduleMapper;
+    private final ProductMapper productMapper;
+    private final ProductVersionMapper versionMapper;
     private final IssueDomainMapper domainMapper;
     private final PasswordEncoder passwordEncoder;
     private final DtsCustomizationProperties customization;
@@ -105,6 +107,22 @@ public class DataInitializer implements CommandLineRunner {
                     .eq(ProductModule::getName, moduleName)) == 0) {
                 insert(moduleMapper, ProductModule.builder()
                         .name(moduleName).active(true).build());
+            }
+        }
+        for (String productName : customization.getMasterData().getProducts()) {
+            if (productMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<Product>lambdaQuery()
+                    .eq(Product::getName, productName)) == 0) {
+                insert(productMapper, Product.builder()
+                        .name(productName).active(true).build());
+            }
+        }
+        for (String version : customization.getMasterData().getVersions()) {
+            if (versionMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ProductVersion>lambdaQuery()
+                    .eq(ProductVersion::getVersion, version)) == 0) {
+                insert(versionMapper, ProductVersion.builder()
+                        .version(version).active(true).build());
             }
         }
         for (DtsCustomizationProperties.DomainOption configured : customization.getMasterData().getDomains()) {

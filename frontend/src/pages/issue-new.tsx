@@ -9,17 +9,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RichTextEditor } from "@/components/rich-text-editor"
+import { Combobox } from "@/components/ui/combobox"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import type { Dictionaries, Issue, IssueFormFieldConfig, Priority } from "@/lib/types"
 import { htmlToText } from "@/lib/utils"
+import { useAuth } from "@/store/auth"
 
 export function IssueNewPage() {
   const navigate = useNavigate()
   const { id: editId } = useParams<{ id?: string }>()
   const isEdit = Boolean(editId)
+  const { user } = useAuth()
   const [dict, setDict] = useState<Dictionaries | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
@@ -34,6 +37,9 @@ export function IssueNewPage() {
     productName: "",
     foundVersionName: "",
     priority: "" as Priority,
+    assigneeId: "",
+    subModule: "",
+    expectedFinishAt: "",
   })
 
   useEffect(() => {
@@ -57,6 +63,9 @@ export function IssueNewPage() {
         productName: issue.productName || "",
         foundVersionName: issue.foundVersionName || "",
         priority: (issue.priority || "") as Priority,
+        assigneeId: issue.assigneeId ? String(issue.assigneeId) : "",
+        subModule: issue.subModule || "",
+        expectedFinishAt: issue.expectedFinishAt ? toDateTimeLocal(issue.expectedFinishAt) : "",
       })
     }).finally(() => setLoading(false))
   }, [isEdit, editId])
@@ -71,6 +80,8 @@ export function IssueNewPage() {
     if (!form.title.trim()) return toast.error("请填写问题标题")
     if (form.title.trim().length > 255) return toast.error("问题标题不能超过255个字符")
     if (!htmlToText(form.description)) return toast.error("请填写问题描述")
+    const vpnConfig = field("vpnInfo")
+    if (vpnConfig?.required && !form.vpnInfo.trim()) return toast.error(`${vpnConfig.label}为必填项`)
     setSaving(true)
     try {
       const payload = {
@@ -84,6 +95,9 @@ export function IssueNewPage() {
         productName: form.productName.trim() || undefined,
         foundVersionName: form.foundVersionName.trim() || undefined,
         priority: form.priority,
+        assigneeId: form.assigneeId ? Number(form.assigneeId) : undefined,
+        subModule: form.subModule.trim() || undefined,
+        expectedFinishAt: form.expectedFinishAt || undefined,
       }
       if (isEdit && editId) {
         await api.put<Issue>(`/issues/${editId}`, { id: Number(editId), ...payload })
@@ -155,6 +169,10 @@ export function IssueNewPage() {
                 maxLength={255}
               />
             </div>
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label>提出人</Label>
+              <Input value={user?.displayName || ""} disabled placeholder="当前登录用户" />
+            </div>
             <ConfiguredField config={field("module")}>
               <Select value={form.moduleId} onValueChange={(v) => set("moduleId", v)}>
                 <SelectTrigger><SelectValue placeholder={field("module")?.placeholder} /></SelectTrigger>
@@ -163,12 +181,20 @@ export function IssueNewPage() {
                 </SelectContent>
               </Select>
             </ConfiguredField>
-            <ConfiguredField config={field("product")}>
+            <ConfiguredField config={field("subModule")}>
               <Input
-                value={form.productName}
-                onChange={(event) => set("productName", event.target.value)}
-                placeholder={field("product")?.placeholder || "输入产品名称"}
+                value={form.subModule}
+                onChange={(event) => set("subModule", event.target.value)}
+                placeholder={field("subModule")?.placeholder || "如 PL团队"}
                 maxLength={255}
+              />
+            </ConfiguredField>
+            <ConfiguredField config={field("product")}>
+              <Combobox
+                value={form.productName}
+                onChange={(value) => set("productName", value)}
+                options={(dict?.products || []).map((p) => ({ value: p.name, label: p.name }))}
+                placeholder={field("product")?.placeholder || "选择或输入产品名称"}
               />
             </ConfiguredField>
             <ConfiguredField config={field("domain")}>
@@ -180,11 +206,11 @@ export function IssueNewPage() {
               </Select>
             </ConfiguredField>
             <ConfiguredField config={field("foundVersion")}>
-              <Input
+              <Combobox
                 value={form.foundVersionName}
-                onChange={(event) => set("foundVersionName", event.target.value)}
-                placeholder={field("foundVersion")?.placeholder || "输入版本号"}
-                maxLength={255}
+                onChange={(value) => set("foundVersionName", value)}
+                options={(dict?.versions || []).map((v) => ({ value: v.version, label: v.version }))}
+                placeholder={field("foundVersion")?.placeholder || "选择或输入版本号"}
               />
             </ConfiguredField>
             <ConfiguredField config={field("priority")}>
@@ -200,6 +226,24 @@ export function IssueNewPage() {
             <ConfiguredField config={field("vpnInfo")}>
               <Input value={form.vpnInfo} onChange={(e) => set("vpnInfo", e.target.value)}
                 placeholder={field("vpnInfo")?.placeholder} />
+            </ConfiguredField>
+            <ConfiguredField config={field("expectedFinishAt")}>
+              <Input
+                type="datetime-local"
+                value={form.expectedFinishAt}
+                onChange={(e) => set("expectedFinishAt", e.target.value)}
+              />
+            </ConfiguredField>
+            <ConfiguredField config={{ label: "指定处理人", required: false, visible: true }}>
+              <Select value={form.assigneeId || "none"} onValueChange={(v) => set("assigneeId", v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="选择处理人（可选）" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">暂不指定</SelectItem>
+                  {dict?.developers.map((developer) => (
+                    <SelectItem key={developer.id} value={String(developer.id)}>{developer.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </ConfiguredField>
 
             <ConfiguredField config={field("envInfo")} className="col-span-2">
@@ -231,4 +275,12 @@ function ConfiguredField({
       {children}
     </div>
   )
+}
+
+/** 把 ISO 时间字符串转成 datetime-local 输入框的值（本地时区）。 */
+function toDateTimeLocal(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

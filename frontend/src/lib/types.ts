@@ -47,6 +47,8 @@ export interface Dictionaries {
   users: User[]
   developers: User[]
   teams: Team[]
+  products: Product[]
+  versions: ProductVersion[]
   modules: ProductModule[]
   domains: IssueDomain[]
   customization: DtsCustomization
@@ -96,7 +98,8 @@ export interface DtsCustomization {
     statuses: Array<{ value: IssueStatus; label: string; color?: string }>
     fields: Record<
       "title" | "description" | "module" | "product" | "domain" |
-      "foundVersion" | "priority" | "vpnInfo" | "envInfo",
+      "foundVersion" | "priority" | "vpnInfo" | "envInfo" |
+      "expectedFinishAt" | "subModule",
       IssueFormFieldConfig
     >
     transitions: Partial<Record<IssueStatus, IssueStatus[]>>
@@ -140,6 +143,8 @@ export interface Issue {
   updatedAt: string
   moduleId?: number
   moduleName?: string
+  subModule?: string
+  dtsTicketNo?: string
   title: string
   description: string
   searchKeywords?: string
@@ -164,6 +169,7 @@ export interface Issue {
   resolution?: string
   workaround?: string
   planFinishAt?: string
+  expectedFinishAt?: string
   locatedAt?: string
   resolvedAt?: string
   closedAt?: string
