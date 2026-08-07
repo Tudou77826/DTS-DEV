@@ -80,8 +80,8 @@ public class IssueService {
 
         logOperation(issue.getId(), me.getId(), "CREATE", "status", null, IssueStatus.PENDING_ASSIGN, "创建问题");
         if (issue.getAssigneeId() != null) {
-            // 创建时指定了处理人：沿用分配逻辑，直接进入待定位并通知处理人
-            applyStatus(issue, IssueStatus.PENDING_LOCATE, me.getId(), "创建时指定处理人");
+            // 创建时指定了处理人：沿用分配逻辑，直接进入处理中并通知处理人
+            applyStatus(issue, IssueStatus.PROCESSING, me.getId(), "创建时指定处理人");
             issueMapper.updateById(issue);
             notificationService.notifyUsers(List.of(issue.getAssigneeId()), "ASSIGN",
                     "问题已分配：" + issue.getCode(), issue.getTitle(), "/issues/" + issue.getId());
@@ -236,14 +236,14 @@ public class IssueService {
         if (req.getPlanFinishAt() != null) {
             issue.setPlanFinishAt(req.getPlanFinishAt());
         }
-        // 分配时若无定位开始时间，状态切到 待定位
+        // 分配时若无定位开始时间，状态切到 处理中
         if (req.getStatus() != null) {
-            if (!List.of(IssueStatus.PENDING_LOCATE, IssueStatus.LOCATING).contains(req.getStatus())) {
-                throw new BusinessException("分配时仅允许流转到待定位或定位中");
+            if (!IssueStatus.PROCESSING.equals(req.getStatus())) {
+                throw new BusinessException("分配时仅允许流转到处理中");
             }
             applyStatus(issue, req.getStatus(), me.getId(), req.getRemark());
         } else if (IssueStatus.PENDING_ASSIGN.equals(issue.getStatus()) && req.getAssigneeId() != null) {
-            applyStatus(issue, IssueStatus.PENDING_LOCATE, me.getId(), req.getRemark());
+            applyStatus(issue, IssueStatus.PROCESSING, me.getId(), req.getRemark());
         }
         issueMapper.updateById(issue);
         List<Long> recipients = new ArrayList<>();
@@ -261,6 +261,10 @@ public class IssueService {
         LoginUser me = SecurityUtil.current();
         Issue issue = require(issueId);
         String remark = sanitizer.plainText(req.getRemark());
+        // 先落单号再校验（转已解决的必填校验需要看到本次提交的 DTS 单号）
+        if (req.getDtsTicketNo() != null) {
+            issue.setDtsTicketNo(sanitizeOptionalLabel(req.getDtsTicketNo(), "DTS 单号"));
+        }
         permissionService.requireTransition(issue, req.getStatus(), remark);
         applyStatus(issue, req.getStatus(), me.getId(), remark);
         issueMapper.updateById(issue);
@@ -277,8 +281,8 @@ public class IssueService {
         String old = issue.getStatus();
         if (old.equals(newStatus)) return;
 
-        // 记录定位开始
-        if (IssueStatus.LOCATING.equals(newStatus) && issue.getLocatedAt() == null) {
+        // 记录定位开始（进入处理中）
+        if (IssueStatus.PROCESSING.equals(newStatus) && issue.getLocatedAt() == null) {
             issue.setLocatedAt(LocalDateTime.now());
         }
         // 记录解决时间
@@ -290,8 +294,8 @@ public class IssueService {
             issue.setClosedAt(LocalDateTime.now());
             if (issue.getResolvedAt() == null) issue.setResolvedAt(LocalDateTime.now());
         }
-        // 重新打开
-        if (IssueStatus.REOPENED.equals(newStatus)) {
+        // 重新打开（从已终结状态退回处理中）
+        if (IssueStatus.PROCESSING.equals(newStatus) && IssueStatus.TERMINAL.contains(old)) {
             issue.setClosedAt(null);
             issue.setResolvedAt(null);
         }
@@ -326,11 +330,6 @@ public class IssueService {
                 case "RESOLUTION" -> issue.setResolution(content);
                 case "WORKAROUND" -> issue.setWorkaround(content);
                 default -> { /* VERIFY 等不更新汇总 */ }
-            }
-            // 首次记录进展时若在 待定位，则进入 定位中
-            if (IssueStatus.PENDING_LOCATE.equals(issue.getStatus())) {
-                permissionService.requireTransition(issue, IssueStatus.LOCATING, "开始定位");
-                applyStatus(issue, IssueStatus.LOCATING, me.getId(), "开始定位");
             }
             issueMapper.updateById(issue);
         }
@@ -512,9 +511,8 @@ public class IssueService {
                         .or().like(Issue::getCollaboratorIds, "," + userId + ",")));
 
         List<String> statuses = switch (tab == null ? "" : tab) {
-            case "pending_locate" -> List.of(IssueStatus.PENDING_LOCATE, IssueStatus.PENDING_ASSIGN);
-            case "locating" -> List.of(IssueStatus.LOCATING);
-            case "need_info" -> List.of(IssueStatus.NEED_INFO);
+            case "pending_assign" -> List.of(IssueStatus.PENDING_ASSIGN);
+            case "processing" -> List.of(IssueStatus.PROCESSING);
             case "pending_verify" -> List.of(IssueStatus.PENDING_VERIFY);
             case "overdue" -> List.of();
             case "done" -> IssueStatus.TERMINAL;

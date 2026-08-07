@@ -2,16 +2,10 @@ import type { DtsCustomization, IssueStatus, Priority } from "./types"
 
 export const STATUS_META: Record<IssueStatus, { label: string; className: string; dot: string }> = {
   PENDING_ASSIGN: { label: "待分配", className: "bg-secondary text-secondary-foreground", dot: "#a1a1a1" },
-  PENDING_LOCATE: { label: "待定位", className: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300", dot: "#f59e0b" },
-  LOCATING: { label: "定位中", className: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300", dot: "#3b82f6" },
+  PROCESSING: { label: "处理中", className: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300", dot: "#3b82f6" },
   PENDING_VERIFY: { label: "待验证", className: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300", dot: "#8b5cf6" },
   RESOLVED: { label: "已解决", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300", dot: "#10b981" },
   CLOSED: { label: "已关闭", className: "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400", dot: "#71717a" },
-  NEED_INFO: { label: "待补充信息", className: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300", dot: "#f97316" },
-  DEFERRED: { label: "暂缓处理", className: "bg-secondary text-muted-foreground", dot: "#a1a1a1" },
-  CANNOT_REPRODUCE: { label: "无法复现", className: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300", dot: "#f43f5e" },
-  WONT_FIX: { label: "无须处理", className: "bg-secondary text-muted-foreground", dot: "#a1a1a1" },
-  REOPENED: { label: "重新打开", className: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300", dot: "#ef4444" },
 }
 
 export const PRIORITY_META: Record<Priority, { label: string; className: string }> = {

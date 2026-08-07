@@ -129,9 +129,8 @@ export interface DtsCustomization {
 
 // ─── 问题 ───────────────────────────────────────
 export type IssueStatus =
-  | "PENDING_ASSIGN" | "PENDING_LOCATE" | "LOCATING" | "PENDING_VERIFY"
-  | "RESOLVED" | "CLOSED" | "NEED_INFO" | "DEFERRED"
-  | "CANNOT_REPRODUCE" | "WONT_FIX" | "REOPENED"
+  | "PENDING_ASSIGN" | "PROCESSING" | "PENDING_VERIFY"
+  | "RESOLVED" | "CLOSED"
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
 
@@ -260,4 +259,17 @@ export interface BatchResult {
   succeeded: number
   failed: number
   errors: string[]
+}
+
+export interface Feedback {
+  id: number
+  userId: number
+  userName?: string
+  content: string
+  status: "OPEN" | "PROCESSED"
+  handledBy?: number
+  handlerName?: string
+  handledAt?: string
+  reply?: string
+  createdAt: string
 }

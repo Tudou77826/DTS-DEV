@@ -30,4 +30,12 @@ public final class SecurityUtil {
         }
         return null;
     }
+
+    /** 当前请求是否携带了有效的管理员令牌（共享密码门禁签发的短时权限）。 */
+    public static boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
 }

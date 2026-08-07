@@ -12,6 +12,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import type { Dictionaries, Issue, IssueStatus } from "@/lib/types"
 import { useCustomization } from "@/store/customization"
@@ -25,11 +26,16 @@ export function IssueActions({ issue, onChanged }: { issue: Issue; onChanged: ()
 
   const customization = useCustomization((state) => state.value)
   const canAssign = user?.role === "LEADER"
+  const isAdmin = useAuth((state) => state.isAdminActive())
   const nextStatuses = (customization?.issue.transitions[issue.status] || []).filter((status) => {
-    if (status === "CLOSED" || status === "REOPENED") {
-      return user?.id === issue.submitterId
+    if (status === "CLOSED") {
+      return isAdmin || user?.id === issue.submitterId
     }
-    return user?.id === issue.assigneeId
+    // 从已解决/已关闭回退处理中（重新打开）：提出人，管理员可越权
+    if (status === "PROCESSING" && ["RESOLVED", "CLOSED"].includes(issue.status)) {
+      return isAdmin || user?.id === issue.submitterId
+    }
+    return isAdmin || user?.id === issue.assigneeId
   })
 
   return (
@@ -154,22 +160,32 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
 }) {
   const [status, setStatus] = useState("")
   const [remark, setRemark] = useState("")
+  const [dtsTicketNo, setDtsTicketNo] = useState("")
   const [saving, setSaving] = useState(false)
+
+  const isResolving = status === "RESOLVED"
+  const hasResolution = Boolean(issue.resolution?.trim())
   const requirement = status === "PENDING_VERIFY" && !issue.rootCause
     ? "进入待验证前，请先在处理记录中填写“根本原因”。"
-    : status === "RESOLVED" && (!issue.rootCause || !issue.resolution)
-      ? "解决前必须填写“根本原因”和“处理结论”。"
-      : ["NEED_INFO", "DEFERRED", "CANNOT_REPRODUCE", "WONT_FIX", "REOPENED"].includes(status) && !remark.trim()
-        ? "该状态必须填写流转说明。"
+    : isResolving && !remark.trim()
+      ? "转为已解决前必须填写处理描述。"
+      : isResolving && !dtsTicketNo.trim() && !hasResolution
+        ? "请填写 DTS 系统问题单号（若为问题），或先在处理记录中填写“处理结论”（若为非问题）。"
         : ""
+
+  const canSubmit = Boolean(status) && !requirement
 
   const submit = async () => {
     if (!status) return toast.error("请选择状态")
     setSaving(true)
     try {
-      await api.post(`/issues/${issue.id}/status`, { status, remark: remark || undefined })
+      await api.post(`/issues/${issue.id}/status`, {
+        status,
+        remark: remark || undefined,
+        dtsTicketNo: isResolving && dtsTicketNo.trim() ? dtsTicketNo.trim() : undefined,
+      })
       toast.success(`已流转到「${STATUS_META[status as IssueStatus].label}」`)
-      setStatus(""); setRemark("")
+      setStatus(""); setRemark(""); setDtsTicketNo("")
       onChanged()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "操作失败")
@@ -191,7 +207,7 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
         <div className="grid gap-4 py-2">
           <div className="flex flex-col gap-2">
             <Label>流转到</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(v) => { setStatus(v); if (v !== "RESOLVED") setDtsTicketNo("") }}>
               <SelectTrigger><SelectValue placeholder="选择目标状态" /></SelectTrigger>
               <SelectContent>
                 {nextStatuses.map((s) => (
@@ -200,10 +216,33 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label>进展说明（可选）</Label>
-            <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="补充说明本次状态变更" />
-          </div>
+          {isResolving && (
+            <div className="flex flex-col gap-2">
+              <Label>处理描述（必填）</Label>
+              <Textarea
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                placeholder="填写处理经过与结果；若为问题，请同时提供 DTS 单号"
+                rows={3}
+              />
+            </div>
+          )}
+          {isResolving && (
+            <div className="flex flex-col gap-2">
+              <Label>DTS 系统问题单号（问题必填）</Label>
+              <Input
+                value={dtsTicketNo}
+                onChange={(e) => setDtsTicketNo(e.target.value)}
+                placeholder="若为问题，请填写 DTS 单号"
+              />
+            </div>
+          )}
+          {!isResolving && (
+            <div className="flex flex-col gap-2">
+              <Label>进展说明（可选）</Label>
+              <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="补充说明本次状态变更" />
+            </div>
+          )}
           {requirement && (
             <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
               {requirement}
@@ -212,7 +251,7 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">取消</Button></DialogClose>
-          <Button onClick={submit} disabled={saving || Boolean(requirement)}>{saving && "处理中…"}确认流转</Button>
+          <Button onClick={submit} disabled={saving || !canSubmit}>{saving && "处理中…"}确认流转</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -63,11 +63,8 @@ dts:
         - value: PENDING_ASSIGN
           label: 待分配
           color: neutral
-        - value: PENDING_LOCATE
-          label: 待定位
-          color: amber
-        - value: LOCATING
-          label: 定位中
+        - value: PROCESSING
+          label: 处理中
           color: blue
         - value: PENDING_VERIFY
           label: 待验证
@@ -78,34 +75,13 @@ dts:
         - value: CLOSED
           label: 已关闭
           color: neutral
-        - value: NEED_INFO
-          label: 待补充信息
-          color: orange
-        - value: DEFERRED
-          label: 暂缓处理
-          color: neutral
-        - value: CANNOT_REPRODUCE
-          label: 无法复现
-          color: red
-        - value: WONT_FIX
-          label: 无须处理
-          color: neutral
-        - value: REOPENED
-          label: 重新打开
-          color: red
 
       transitions:
-        PENDING_ASSIGN: [PENDING_LOCATE, NEED_INFO]
-        PENDING_LOCATE: [LOCATING, NEED_INFO, DEFERRED]
-        LOCATING: [PENDING_VERIFY, NEED_INFO, DEFERRED, CANNOT_REPRODUCE, WONT_FIX]
-        PENDING_VERIFY: [RESOLVED, LOCATING, NEED_INFO]
-        RESOLVED: [CLOSED, REOPENED]
-        CLOSED: [REOPENED]
-        NEED_INFO: [PENDING_LOCATE, LOCATING]
-        DEFERRED: [LOCATING]
-        CANNOT_REPRODUCE: [LOCATING, CLOSED]
-        WONT_FIX: [CLOSED]
-        REOPENED: [PENDING_LOCATE, LOCATING]
+        PENDING_ASSIGN: [PROCESSING]
+        PROCESSING: [PENDING_VERIFY, PROCESSING]
+        PENDING_VERIFY: [RESOLVED, PROCESSING]
+        RESOLVED: [CLOSED, PROCESSING]
+        CLOSED: [PROCESSING]
 
       fields:
         title:

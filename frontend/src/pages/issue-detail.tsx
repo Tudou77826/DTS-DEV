@@ -171,9 +171,12 @@ export function IssueDetailPage() {
                 <Row label="工号" value={issue.submitterNo || "-"} />
                 <Row label="提出时间" value={formatDateTime(issue.raisedAt)} />
                 <Row label="所属模块" value={issue.moduleName || "-"} />
+                {issue.subModule && <Row label="子模块" value={issue.subModule} />}
                 <Row label="来源产品" value={issue.productName || "-"} />
                 <Row label="问题领域" value={issue.domainName || "-"} />
                 <Row label="发现版本" value={issue.foundVersionName || "-"} />
+                {issue.expectedFinishAt && <Row label="期望解决" value={formatDateTime(issue.expectedFinishAt)} />}
+                {issue.dtsTicketNo && <Row label="DTS 单号" value={issue.dtsTicketNo} />}
                 {issue.planFinishAt && <Row label="计划完成" value={formatDateTime(issue.planFinishAt)} />}
                 {issue.locatedAt && <Row label="开始定位" value={formatDateTime(issue.locatedAt)} />}
                 {issue.resolvedAt && <Row label="解决时间" value={formatDateTime(issue.resolvedAt)} />}

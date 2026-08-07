@@ -12,6 +12,7 @@ import { MyTasksPage } from "@/pages/my-tasks"
 import { InvestigationPage } from "@/pages/investigation"
 import { StatsPage } from "@/pages/stats"
 import { ConfigPage } from "@/pages/config"
+import { FeedbackPage } from "@/pages/feedback"
 import { CustomizationPage } from "@/pages/customization"
 import { useCustomization } from "@/store/customization"
 
@@ -54,6 +55,7 @@ export default function App() {
       <Route path="/investigations" element={<Protected><InvestigationPage /></Protected>} />
       <Route path="/stats" element={<Protected><StatsPage /></Protected>} />
       <Route path="/config" element={<Protected><ConfigPage /></Protected>} />
+      <Route path="/feedback" element={<Protected><FeedbackPage /></Protected>} />
       <Route path="/customization" element={<Protected><CustomizationPage /></Protected>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

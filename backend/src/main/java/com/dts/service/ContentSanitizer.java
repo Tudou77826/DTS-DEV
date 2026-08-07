@@ -11,7 +11,7 @@ public class ContentSanitizer {
     private final Safelist richTextSafelist = Safelist.relaxed()
             .addAttributes("a", "target", "rel")
             .addProtocols("a", "href", "http", "https", "mailto")
-            .addProtocols("img", "src", "http", "https");
+            .addProtocols("img", "src", "http", "https", "data");
 
     public String richText(String input) {
         if (input == null) return null;

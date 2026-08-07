@@ -12,9 +12,8 @@ import type { Issue, PageResult, Priority } from "@/lib/types"
 
 const TABS = [
   { value: "all", label: "全部" },
-  { value: "pending_locate", label: "待定位" },
-  { value: "locating", label: "处理中" },
-  { value: "need_info", label: "待补充信息" },
+  { value: "pending_assign", label: "待分配" },
+  { value: "processing", label: "处理中" },
   { value: "pending_verify", label: "待验证" },
   { value: "overdue", label: "已超期" },
   { value: "done", label: "已完成" },

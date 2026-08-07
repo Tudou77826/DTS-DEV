@@ -35,24 +35,24 @@ const IID = r.json.data.id;
 assert("创建问题", "PENDING_ASSIGN", r.json.data.status);
 
 r = await req("POST", `/issues/${IID}/assign`, { assigneeId: DEVID, priority: "URGENT" }, T);
-assert("分配→待定位", "PENDING_LOCATE", r.json.data.status);
+assert("分配→处理中", "PROCESSING", r.json.data.status);
 
-r = await req("POST", `/issues/${IID}/status`, { status: "LOCATING" }, DT);
-assert("流转→LOCATING", "LOCATING", r.json.data.status);
+r = await req("POST", `/issues/${IID}/status`, { status: "PROCESSING" }, DT);
+assert("流转→PROCESSING", "PROCESSING", r.json.data.status);
 // 待验证/已解决 需要先填写根本原因与处理结论
 r = await req("POST", `/issues/${IID}/progress`, { type: "ROOT_CAUSE", content: "内存泄漏", syncToIssue: true }, DT);
 assert("填写根本原因", true, r.json.code === 0);
 r = await req("POST", `/issues/${IID}/progress`, { type: "RESOLUTION", content: "修复并验证", syncToIssue: true }, DT);
 assert("填写处理结论", true, r.json.code === 0);
 for (const s of ["PENDING_VERIFY", "RESOLVED"]) {
-  r = await req("POST", `/issues/${IID}/status`, { status: s }, DT);
+  r = await req("POST", `/issues/${IID}/status`, { status: s, remark: "处理完成" }, DT);
   assert(`流转→${s}`, s, r.json.data.status);
 }
 // 已解决后由提交人（leader）关闭
 r = await req("POST", `/issues/${IID}/status`, { status: "CLOSED" }, T);
 assert("流转→CLOSED（提交人）", "CLOSED", r.json.data.status);
-r = await req("POST", `/issues/${IID}/status`, { status: "REOPENED", remark: "复测仍复现" }, T);
-assert("重新打开（提交人）", "REOPENED", r.json.data.status);
+r = await req("POST", `/issues/${IID}/status`, { status: "PROCESSING", remark: "复测仍复现" }, T);
+assert("重新打开（提交人）", "PROCESSING", r.json.data.status);
 
 console.log("\n=== P0: 权限矩阵 ===");
 // 权限矩阵：只有责任人可流转；提交人可关闭/重新打开；其余人（含负责人）不可越权
@@ -60,13 +60,13 @@ console.log("\n=== P0: 权限矩阵 ===");
 r = await req("POST", "/issues", { moduleId: MODID, title: "权限测试", description: "权限测试", vpnInfo: "VPN 信息" }, T);
 const PID = r.json.data.id;
 await req("POST", `/issues/${PID}/assign`, { assigneeId: dict.developers[1].id }, T);
-// 由责任人推到定位中
+// 由责任人推到处理中
 r = await req("POST", "/auth/login", { username: dict.developers[1].username, password: "123456" });
 const D2T = r.json.data.token;
-r = await req("POST", `/issues/${PID}/status`, { status: "LOCATING" }, D2T);
-assert("责任人可流转到定位中", "LOCATING", r.json.data.status);
+r = await req("POST", `/issues/${PID}/status`, { status: "PROCESSING" }, D2T);
+assert("责任人可流转到处理中", "PROCESSING", r.json.data.status);
 // leader 尝试解决（非责任人）
-r = await req("POST", `/issues/${PID}/status`, { status: "RESOLVED", remark: "我替你解决了" }, T);
+r = await req("POST", `/issues/${PID}/status`, { status: "RESOLVED", remark: "我替你解决了", dtsTicketNo: "DTS-001" }, T);
 assert("非责任人不能解决（应失败 403/400）", true, r.json.code !== 0);
 
 console.log("\n=== P0: 问题编号格式 ISS-yyMMdd-NNN ===");
@@ -119,11 +119,11 @@ assert("非负责人批量关闭被拒（403）", 403, r.json.code);
 r = await req("POST", "/issues", { moduleId: MODID, title: "批量关闭测试", description: "批量关闭测试", vpnInfo: "VPN 信息" }, T);
 const CID = r.json.data.id;
 await req("POST", `/issues/${CID}/assign`, { assigneeId: DEVID }, T);
-await req("POST", `/issues/${CID}/status`, { status: "LOCATING" }, DT);
+await req("POST", `/issues/${CID}/status`, { status: "PROCESSING" }, DT);
 await req("POST", `/issues/${CID}/progress`, { type: "ROOT_CAUSE", content: "内存泄漏", syncToIssue: true }, DT);
 await req("POST", `/issues/${CID}/progress`, { type: "RESOLUTION", content: "修复并验证", syncToIssue: true }, DT);
 await req("POST", `/issues/${CID}/status`, { status: "PENDING_VERIFY" }, DT);
-await req("POST", `/issues/${CID}/status`, { status: "RESOLVED" }, DT);
+await req("POST", `/issues/${CID}/status`, { status: "RESOLVED", remark: "处理完成" }, DT);
 r = await req("POST", `/issues/batch/close`, { issueIds: [CID], remark: "已解决待关闭" }, T);
 assert("负责人批量关闭已解决问题", true, r.json.code === 0 && r.json.data.succeeded === 1);
 // 未解决的问题不能批量关闭

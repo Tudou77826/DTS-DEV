@@ -18,6 +18,7 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationMapper notificationMapper;
+    private final com.dts.mapper.UserMapper userMapper;
     private final FeatureGuard featureGuard;
 
     @Transactional
@@ -47,6 +48,14 @@ public class NotificationService {
         return notificationMapper.selectCount(Wrappers.<Notification>lambdaQuery()
                 .eq(Notification::getUserId, SecurityUtil.currentUserId())
                 .isNull(Notification::getReadAt));
+    }
+
+    /** 项目负责人（LEADER）的用户 ID 列表，用于站内反馈等需要知会负责人的场景。 */
+    public List<Long> leaderUserIds() {
+        return userMapper.selectList(Wrappers.<com.dts.domain.User>lambdaQuery()
+                        .eq(com.dts.domain.User::getRole, "LEADER")
+                        .eq(com.dts.domain.User::getActive, true))
+                .stream().map(com.dts.domain.User::getId).toList();
     }
 
     @Transactional

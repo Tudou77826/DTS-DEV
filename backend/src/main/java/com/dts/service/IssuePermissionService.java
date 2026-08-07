@@ -48,36 +48,37 @@ public class IssuePermissionService {
         }
 
         LoginUser user = SecurityUtil.current();
-        if (IssueStatus.CLOSED.equals(newStatus) || IssueStatus.REOPENED.equals(newStatus)) {
-            if (!user.getId().equals(issue.getSubmitterId())) {
+        boolean isAdmin = SecurityUtil.isAdmin();
+        // 关闭 / 重新打开（从已终结状态退回处理中）仅问题提出人，管理员可越权
+        boolean closeOrReopen = IssueStatus.CLOSED.equals(newStatus)
+                || (IssueStatus.PROCESSING.equals(newStatus)
+                    && IssueStatus.TERMINAL.contains(issue.getStatus()));
+        if (closeOrReopen) {
+            if (!isAdmin && !user.getId().equals(issue.getSubmitterId())) {
                 throw new BusinessException(403, "仅问题提出人可关闭/重新打开问题");
             }
-        } else if (!user.getId().equals(issue.getAssigneeId())) {
+        } else if (!isAdmin && !user.getId().equals(issue.getAssigneeId())) {
             throw new BusinessException(403, "仅当前责任人可执行该状态流转");
         }
 
         if (!IssueStatus.PENDING_ASSIGN.equals(newStatus)
                 && !IssueStatus.CLOSED.equals(newStatus)
-                && !IssueStatus.REOPENED.equals(newStatus)
                 && issue.getAssigneeId() == null) {
             throw new BusinessException("流转前必须先指定责任人");
-        }
-        if ((IssueStatus.NEED_INFO.equals(newStatus)
-                || IssueStatus.DEFERRED.equals(newStatus)
-                || IssueStatus.CANNOT_REPRODUCE.equals(newStatus)
-                || IssueStatus.WONT_FIX.equals(newStatus)
-                || IssueStatus.REOPENED.equals(newStatus))
-                && (remark == null || remark.isBlank())) {
-            throw new BusinessException("该状态流转必须填写说明");
         }
         if (IssueStatus.PENDING_VERIFY.equals(newStatus)
                 && (issue.getRootCause() == null || issue.getRootCause().isBlank())) {
             throw new BusinessException("进入待验证前必须填写根本原因");
         }
-        if (IssueStatus.RESOLVED.equals(newStatus)
-                && ((issue.getRootCause() == null || issue.getRootCause().isBlank())
-                || (issue.getResolution() == null || issue.getResolution().isBlank()))) {
-            throw new BusinessException("解决问题前必须填写根本原因和处理结论");
+        if (IssueStatus.RESOLVED.equals(newStatus)) {
+            if (remark == null || remark.isBlank()) {
+                throw new BusinessException("转为已解决前必须填写处理描述");
+            }
+            boolean hasTicket = issue.getDtsTicketNo() != null && !issue.getDtsTicketNo().isBlank();
+            boolean hasResolution = issue.getResolution() != null && !issue.getResolution().isBlank();
+            if (!hasTicket && !hasResolution) {
+                throw new BusinessException("转为已解决前必须填写 DTS 系统问题单号或处理结论：若为问题请填写 DTS 单号，非问题请填写结论");
+            }
         }
     }
 
