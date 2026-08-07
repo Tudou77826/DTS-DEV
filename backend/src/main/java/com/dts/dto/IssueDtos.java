@@ -76,8 +76,12 @@ public class IssueDtos {
         @NotBlank(message = "状态不能为空")
         private String status;
         private String remark;
-        /** 转为已解决时填写的 DTS 系统问题单号（若为问题） */
+        /** 转为已解决/已关闭时填写的 DTS 系统问题单号（若标注为是问题） */
         private String dtsTicketNo;
+        /** 是问题/非问题标注：PROBLEM / NON_PROBLEM（已解决、已关闭时必填） */
+        private String issueFlag;
+        /** 非问题时的处理结论（标注为非问题时必填） */
+        private String resolution;
     }
 
     /** 进展记录 */

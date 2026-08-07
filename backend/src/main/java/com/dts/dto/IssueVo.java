@@ -42,6 +42,7 @@ public class IssueVo {
 
     private String priority;
     private String status;
+    private String issueFlag;
 
     private Long assigneeId;
     private String assigneeName;

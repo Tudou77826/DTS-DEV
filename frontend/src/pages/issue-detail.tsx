@@ -168,6 +168,7 @@ export function IssueDetailPage() {
                 <Row label="问题领域" value={issue.domainName || "-"} />
                 <Row label="发现版本" value={issue.foundVersionName || "-"} />
                 {issue.expectedFinishAt && <Row label="期望解决" value={formatDateTime(issue.expectedFinishAt)} />}
+                {issue.issueFlag && <Row label="标注" value={issue.issueFlag === "PROBLEM" ? "是问题" : "非问题"} />}
                 {issue.dtsTicketNo && <Row label="DTS 单号" value={issue.dtsTicketNo} />}
                 {issue.planFinishAt && <Row label="计划完成" value={formatDateTime(issue.planFinishAt)} />}
                 {issue.locatedAt && <Row label="开始定位" value={formatDateTime(issue.locatedAt)} />}

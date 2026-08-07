@@ -129,8 +129,11 @@ export interface DtsCustomization {
 
 // ─── 问题 ───────────────────────────────────────
 export type IssueStatus =
-  | "PENDING_ASSIGN" | "PROCESSING" | "PENDING_VERIFY"
+  | "PENDING_ASSIGN" | "PENDING_HANDLE" | "PROCESSING"
   | "RESOLVED" | "CLOSED"
+
+/** 是问题/非问题标注 */
+export type IssueFlag = "PROBLEM" | "NON_PROBLEM"
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
 
@@ -158,6 +161,7 @@ export interface Issue {
   foundVersionName?: string
   priority: Priority
   status: IssueStatus
+  issueFlag?: IssueFlag
   assigneeId?: number
   assigneeName?: string
   assigneeColor?: string

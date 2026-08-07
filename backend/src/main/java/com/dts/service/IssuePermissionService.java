@@ -49,7 +49,7 @@ public class IssuePermissionService {
 
         LoginUser user = SecurityUtil.current();
         boolean isAdmin = SecurityUtil.isAdmin();
-        // 关闭 / 重新打开（从已终结状态退回处理中）仅问题提出人，管理员可越权
+        // 关闭 / 重新打开（从已解决/已关闭退回处理中）仅问题提出人，管理员可越权
         boolean closeOrReopen = IssueStatus.CLOSED.equals(newStatus)
                 || (IssueStatus.PROCESSING.equals(newStatus)
                     && IssueStatus.TERMINAL.contains(issue.getStatus()));
@@ -66,19 +66,34 @@ public class IssuePermissionService {
                 && issue.getAssigneeId() == null) {
             throw new BusinessException("流转前必须先指定责任人");
         }
-        if (IssueStatus.PENDING_VERIFY.equals(newStatus)
-                && (issue.getRootCause() == null || issue.getRootCause().isBlank())) {
-            throw new BusinessException("进入待验证前必须填写根本原因");
-        }
+        // 已解决（开发标注）：必填处理描述 + 是问题/非问题标注
         if (IssueStatus.RESOLVED.equals(newStatus)) {
             if (remark == null || remark.isBlank()) {
                 throw new BusinessException("转为已解决前必须填写处理描述");
             }
-            boolean hasTicket = issue.getDtsTicketNo() != null && !issue.getDtsTicketNo().isBlank();
-            boolean hasResolution = issue.getResolution() != null && !issue.getResolution().isBlank();
-            if (!hasTicket && !hasResolution) {
-                throw new BusinessException("转为已解决前必须填写 DTS 系统问题单号或处理结论：若为问题请填写 DTS 单号，非问题请填写结论");
+            validateIssueFlag(issue);
+            if ("NON_PROBLEM".equals(issue.getIssueFlag())
+                    && (issue.getResolution() == null || issue.getResolution().isBlank())) {
+                throw new BusinessException("已标注为非问题，请填写处理结论");
             }
+        }
+        // 已关闭（提出人复核标注）：必填是问题/非问题标注
+        if (IssueStatus.CLOSED.equals(newStatus)) {
+            validateIssueFlag(issue);
+        }
+    }
+
+    /**
+     * 是问题/非问题标注校验：标注必填；标注为「是问题」时 DTS 系统问题单号必填。
+     */
+    private void validateIssueFlag(Issue issue) {
+        String flag = issue.getIssueFlag();
+        if (!"PROBLEM".equals(flag) && !"NON_PROBLEM".equals(flag)) {
+            throw new BusinessException("请先标注该事项是系统问题还是非问题");
+        }
+        if ("PROBLEM".equals(flag)
+                && (issue.getDtsTicketNo() == null || issue.getDtsTicketNo().isBlank())) {
+            throw new BusinessException("已标注为系统问题，请填写 DTS 系统问题单号");
         }
     }
 

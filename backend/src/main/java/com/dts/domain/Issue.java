@@ -82,6 +82,9 @@ public class Issue extends BaseEntity {
     /** 当前状态 */
     private String status;
 
+    /** 是否系统问题：PROBLEM / NON_PROBLEM（已解决或已关闭时由双方标注） */
+    private String issueFlag;
+
     /** 当前责任人 ID（定位人） */
     private Long assigneeId;
 

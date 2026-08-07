@@ -63,12 +63,12 @@ dts:
         - value: PENDING_ASSIGN
           label: 待分配
           color: neutral
+        - value: PENDING_HANDLE
+          label: 待处理
+          color: amber
         - value: PROCESSING
           label: 处理中
           color: blue
-        - value: PENDING_VERIFY
-          label: 待验证
-          color: violet
         - value: RESOLVED
           label: 已解决
           color: green
@@ -77,9 +77,9 @@ dts:
           color: neutral
 
       transitions:
-        PENDING_ASSIGN: [PROCESSING]
-        PROCESSING: [PENDING_VERIFY, PROCESSING]
-        PENDING_VERIFY: [RESOLVED, PROCESSING]
+        PENDING_ASSIGN: [PENDING_HANDLE]
+        PENDING_HANDLE: [PROCESSING]
+        PROCESSING: [RESOLVED, PROCESSING]
         RESOLVED: [CLOSED, PROCESSING]
         CLOSED: [PROCESSING]
 

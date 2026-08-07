@@ -80,8 +80,8 @@ public class IssueService {
 
         logOperation(issue.getId(), me.getId(), "CREATE", "status", null, IssueStatus.PENDING_ASSIGN, "创建问题");
         if (issue.getAssigneeId() != null) {
-            // 创建时指定了处理人：沿用分配逻辑，直接进入处理中并通知处理人
-            applyStatus(issue, IssueStatus.PROCESSING, me.getId(), "创建时指定处理人");
+            // 创建时指定了处理人：进入待处理（开发尚未开始），并通知处理人
+            applyStatus(issue, IssueStatus.PENDING_HANDLE, me.getId(), "创建时指定处理人");
             issueMapper.updateById(issue);
             notificationService.notifyUsers(List.of(issue.getAssigneeId()), "ASSIGN",
                     "问题已分配：" + issue.getCode(), issue.getTitle(), "/issues/" + issue.getId());
@@ -236,14 +236,14 @@ public class IssueService {
         if (req.getPlanFinishAt() != null) {
             issue.setPlanFinishAt(req.getPlanFinishAt());
         }
-        // 分配时若无定位开始时间，状态切到 处理中
+        // 分配时若无定位开始时间，状态切到 待处理（开发尚未开始）
         if (req.getStatus() != null) {
-            if (!IssueStatus.PROCESSING.equals(req.getStatus())) {
-                throw new BusinessException("分配时仅允许流转到处理中");
+            if (!IssueStatus.PENDING_HANDLE.equals(req.getStatus())) {
+                throw new BusinessException("分配时仅允许流转到待处理");
             }
             applyStatus(issue, req.getStatus(), me.getId(), req.getRemark());
         } else if (IssueStatus.PENDING_ASSIGN.equals(issue.getStatus()) && req.getAssigneeId() != null) {
-            applyStatus(issue, IssueStatus.PROCESSING, me.getId(), req.getRemark());
+            applyStatus(issue, IssueStatus.PENDING_HANDLE, me.getId(), req.getRemark());
         }
         issueMapper.updateById(issue);
         List<Long> recipients = new ArrayList<>();
@@ -261,9 +261,15 @@ public class IssueService {
         LoginUser me = SecurityUtil.current();
         Issue issue = require(issueId);
         String remark = sanitizer.plainText(req.getRemark());
-        // 先落单号再校验（转已解决的必填校验需要看到本次提交的 DTS 单号）
+        // 先落单号与标注再校验（转已解决/已关闭的必填校验需要看到本次提交的内容）
         if (req.getDtsTicketNo() != null) {
             issue.setDtsTicketNo(sanitizeOptionalLabel(req.getDtsTicketNo(), "DTS 单号"));
+        }
+        if (req.getIssueFlag() != null) {
+            issue.setIssueFlag(req.getIssueFlag().trim().toUpperCase(java.util.Locale.ROOT));
+        }
+        if (req.getResolution() != null) {
+            issue.setResolution(sanitizer.plainText(req.getResolution()));
         }
         permissionService.requireTransition(issue, req.getStatus(), remark);
         applyStatus(issue, req.getStatus(), me.getId(), remark);
@@ -512,8 +518,8 @@ public class IssueService {
 
         List<String> statuses = switch (tab == null ? "" : tab) {
             case "pending_assign" -> List.of(IssueStatus.PENDING_ASSIGN);
+            case "pending_handle" -> List.of(IssueStatus.PENDING_HANDLE);
             case "processing" -> List.of(IssueStatus.PROCESSING);
-            case "pending_verify" -> List.of(IssueStatus.PENDING_VERIFY);
             case "overdue" -> List.of();
             case "done" -> IssueStatus.TERMINAL;
             default -> IssueStatus.ACTIVE;
@@ -677,6 +683,7 @@ public class IssueService {
                     ? i.getFoundVersionName() : safeGet(versionMap, i.getFoundVersionId()));
             vo.setPriority(i.getPriority());
             vo.setStatus(i.getStatus());
+            vo.setIssueFlag(i.getIssueFlag());
             vo.setAssigneeId(i.getAssigneeId());
             vo.setAssigneeName(safeGet(userMap, i.getAssigneeId()));
             List<Long> collabs = parseIds(i.getCollaboratorIds());

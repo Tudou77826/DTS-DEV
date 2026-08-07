@@ -19,7 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * 问题流转权限矩阵测试（5 个主线状态）：
- * 关闭/重新打开仅提交人（管理员可越权），其余流转仅当前责任人（管理员可越权）。
+ * 待分配 → 待处理 → 处理中 → 已解决 → 已关闭。
+ * 已解决/已关闭必须标注是问题或非问题；是问题必填 DTS 单号，非问题必填结论。
  */
 class IssuePermissionServiceTest {
 
@@ -30,9 +31,9 @@ class IssuePermissionServiceTest {
         DtsCustomizationProperties customization = new DtsCustomizationProperties();
         // 与默认配置一致的流转矩阵（dts-customization.yml）
         customization.getIssue().getTransitions().putAll(Map.of(
-                "PENDING_ASSIGN", List.of("PROCESSING"),
-                "PROCESSING", List.of("PENDING_VERIFY", "PROCESSING"),
-                "PENDING_VERIFY", List.of("RESOLVED", "PROCESSING"),
+                "PENDING_ASSIGN", List.of("PENDING_HANDLE"),
+                "PENDING_HANDLE", List.of("PROCESSING"),
+                "PROCESSING", List.of("RESOLVED", "PROCESSING"),
                 "RESOLVED", List.of("CLOSED", "PROCESSING"),
                 "CLOSED", List.of("PROCESSING")));
         permissionService = new IssuePermissionService(customization);
@@ -65,10 +66,14 @@ class IssuePermissionServiceTest {
         return issue;
     }
 
+    // ─── 权限矩阵 ───
+
     @Test
     void submitterCanCloseResolvedIssue() {
         login(1L, "SUBMITTER");
         Issue resolved = issue("RESOLVED", 1L, 2L);
+        resolved.setIssueFlag("PROBLEM");
+        resolved.setDtsTicketNo("DTS-001");
         assertDoesNotThrow(() -> permissionService.requireTransition(resolved, "CLOSED", null));
     }
 
@@ -76,6 +81,7 @@ class IssuePermissionServiceTest {
     void nonSubmitterCannotCloseResolvedIssue() {
         login(2L, "DEVELOPER");
         Issue resolved = issue("RESOLVED", 1L, 2L);
+        resolved.setIssueFlag("PROBLEM");
         BusinessException error = assertThrows(BusinessException.class,
                 () -> permissionService.requireTransition(resolved, "CLOSED", null));
         assertEquals(403, error.getCode());
@@ -91,74 +97,30 @@ class IssuePermissionServiceTest {
     }
 
     @Test
-    void nonSubmitterCannotReopen() {
-        login(2L, "DEVELOPER");
-        Issue resolved = issue("RESOLVED", 1L, 2L);
-        BusinessException error = assertThrows(BusinessException.class,
-                () -> permissionService.requireTransition(resolved, "PROCESSING", "复测仍复现"));
-        assertEquals(403, error.getCode());
-    }
-
-    @Test
     void adminCanTransitionAnyStatus() {
         loginAdmin(3L, "SUBMITTER");
         Issue resolved = issue("RESOLVED", 1L, 2L);
+        resolved.setIssueFlag("PROBLEM");
+        resolved.setDtsTicketNo("DTS-ADMIN-001");
         assertDoesNotThrow(() -> permissionService.requireTransition(resolved, "CLOSED", null));
         Issue closed = issue("CLOSED", 1L, 2L);
         assertDoesNotThrow(() -> permissionService.requireTransition(closed, "PROCESSING", "管理员重新打开"));
     }
 
     @Test
-    void assigneeCanTransitionActiveStatus() {
+    void assigneeCanStartProcessing() {
         login(2L, "DEVELOPER");
-        Issue processing = issue("PROCESSING", 1L, 2L);
-        processing.setRootCause("已定位到根因");
-        assertDoesNotThrow(() -> permissionService.requireTransition(processing, "PENDING_VERIFY", null));
+        Issue pendingHandle = issue("PENDING_HANDLE", 1L, 2L);
+        assertDoesNotThrow(() -> permissionService.requireTransition(pendingHandle, "PROCESSING", null));
     }
 
     @Test
-    void nonAssigneeCannotTransitionActiveStatus() {
+    void nonAssigneeCannotStartProcessing() {
         login(3L, "DEVELOPER");
-        Issue processing = issue("PROCESSING", 1L, 2L);
+        Issue pendingHandle = issue("PENDING_HANDLE", 1L, 2L);
         BusinessException error = assertThrows(BusinessException.class,
-                () -> permissionService.requireTransition(processing, "PENDING_VERIFY", null));
+                () -> permissionService.requireTransition(pendingHandle, "PROCESSING", null));
         assertEquals(403, error.getCode());
-    }
-
-    @Test
-    void pendingVerifyRequiresRootCause() {
-        login(2L, "DEVELOPER");
-        Issue processing = issue("PROCESSING", 1L, 2L);
-        assertThrows(BusinessException.class,
-                () -> permissionService.requireTransition(processing, "PENDING_VERIFY", null));
-        processing.setRootCause("DNS 解析超时");
-        assertDoesNotThrow(() -> permissionService.requireTransition(processing, "PENDING_VERIFY", null));
-    }
-
-    @Test
-    void resolveRequiresRemarkAndTicketOrResolution() {
-        login(2L, "DEVELOPER");
-        Issue pendingVerify = issue("PENDING_VERIFY", 1L, 2L);
-        // 无描述、无单号、无结论 → 拒绝
-        BusinessException e1 = assertThrows(BusinessException.class,
-                () -> permissionService.requireTransition(pendingVerify, "RESOLVED", null));
-        assertEquals("转为已解决前必须填写处理描述", e1.getMessage());
-        // 有描述但既无 DTS 单号也无结论 → 拒绝
-        BusinessException e2 = assertThrows(BusinessException.class,
-                () -> permissionService.requireTransition(pendingVerify, "RESOLVED", "处理完成"));
-        assertEquals("转为已解决前必须填写 DTS 系统问题单号或处理结论：若为问题请填写 DTS 单号，非问题请填写结论", e2.getMessage());
-        // 填写 DTS 单号 → 通过
-        pendingVerify.setDtsTicketNo("DTS-2026-001");
-        assertDoesNotThrow(() -> permissionService.requireTransition(pendingVerify, "RESOLVED", "处理完成"));
-    }
-
-    @Test
-    void resolveRequiresTicketOrResolution() {
-        login(2L, "DEVELOPER");
-        Issue pendingVerify = issue("PENDING_VERIFY", 1L, 2L);
-        // 有处理结论（非问题）而无 DTS 单号 → 通过
-        pendingVerify.setResolution("经排查为环境误报，非产品问题");
-        assertDoesNotThrow(() -> permissionService.requireTransition(pendingVerify, "RESOLVED", "已确认非问题"));
     }
 
     @Test
@@ -166,7 +128,7 @@ class IssuePermissionServiceTest {
         login(2L, "DEVELOPER");
         Issue unassigned = issue("PENDING_ASSIGN", 1L, null);
         assertThrows(BusinessException.class,
-                () -> permissionService.requireTransition(unassigned, "PROCESSING", null));
+                () -> permissionService.requireTransition(unassigned, "PENDING_HANDLE", null));
     }
 
     @Test
@@ -183,5 +145,81 @@ class IssuePermissionServiceTest {
         login(2L, "DEVELOPER");
         Issue processing = issue("PROCESSING", 1L, 2L);
         assertDoesNotThrow(() -> permissionService.requireTransition(processing, "PROCESSING", null));
+    }
+
+    // ─── 已解决标注校验 ───
+
+    @Test
+    void resolveRequiresRemark() {
+        login(2L, "DEVELOPER");
+        Issue processing = issue("PROCESSING", 1L, 2L);
+        processing.setIssueFlag("PROBLEM");
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> permissionService.requireTransition(processing, "RESOLVED", null));
+        assertEquals("转为已解决前必须填写处理描述", error.getMessage());
+    }
+
+    @Test
+    void resolveRequiresFlagAnnotation() {
+        login(2L, "DEVELOPER");
+        Issue processing = issue("PROCESSING", 1L, 2L);
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> permissionService.requireTransition(processing, "RESOLVED", "处理完成"));
+        assertEquals("请先标注该事项是系统问题还是非问题", error.getMessage());
+    }
+
+    @Test
+    void resolveAsProblemRequiresDtsTicket() {
+        login(2L, "DEVELOPER");
+        Issue processing = issue("PROCESSING", 1L, 2L);
+        processing.setIssueFlag("PROBLEM");
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> permissionService.requireTransition(processing, "RESOLVED", "处理完成"));
+        assertEquals("已标注为系统问题，请填写 DTS 系统问题单号", error.getMessage());
+        processing.setDtsTicketNo("DTS-2026-001");
+        assertDoesNotThrow(() -> permissionService.requireTransition(processing, "RESOLVED", "处理完成"));
+    }
+
+    @Test
+    void resolveAsNonProblemRequiresResolution() {
+        login(2L, "DEVELOPER");
+        Issue processing = issue("PROCESSING", 1L, 2L);
+        processing.setIssueFlag("NON_PROBLEM");
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> permissionService.requireTransition(processing, "RESOLVED", "处理完成"));
+        assertEquals("已标注为非问题，请填写处理结论", error.getMessage());
+        processing.setResolution("经排查为环境误报，非产品问题");
+        assertDoesNotThrow(() -> permissionService.requireTransition(processing, "RESOLVED", "处理完成"));
+    }
+
+    // ─── 已关闭标注校验 ───
+
+    @Test
+    void closeRequiresFlagAnnotation() {
+        login(1L, "SUBMITTER");
+        Issue resolved = issue("RESOLVED", 1L, 2L);
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> permissionService.requireTransition(resolved, "CLOSED", null));
+        assertEquals("请先标注该事项是系统问题还是非问题", error.getMessage());
+    }
+
+    @Test
+    void closeAsProblemRequiresDtsTicket() {
+        login(1L, "SUBMITTER");
+        Issue resolved = issue("RESOLVED", 1L, 2L);
+        resolved.setIssueFlag("PROBLEM");
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> permissionService.requireTransition(resolved, "CLOSED", null));
+        assertEquals("已标注为系统问题，请填写 DTS 系统问题单号", error.getMessage());
+        resolved.setDtsTicketNo("DTS-2026-002");
+        assertDoesNotThrow(() -> permissionService.requireTransition(resolved, "CLOSED", null));
+    }
+
+    @Test
+    void closeAsNonProblemSucceeds() {
+        login(1L, "SUBMITTER");
+        Issue resolved = issue("RESOLVED", 1L, 2L);
+        resolved.setIssueFlag("NON_PROBLEM");
+        assertDoesNotThrow(() -> permissionService.requireTransition(resolved, "CLOSED", null));
     }
 }

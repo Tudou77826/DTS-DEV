@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import type { Dictionaries, Issue, IssueStatus } from "@/lib/types"
 import { useCustomization } from "@/store/customization"
 import { STATUS_META, PRIORITY_META } from "@/lib/labels"
@@ -161,18 +162,26 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
 }) {
   const [status, setStatus] = useState("")
   const [remark, setRemark] = useState("")
-  const [dtsTicketNo, setDtsTicketNo] = useState("")
+  const [issueFlag, setIssueFlag] = useState("")
+  const [dtsTicketNo, setDtsTicketNo] = useState(issue.dtsTicketNo || "")
+  const [resolution, setResolution] = useState("")
   const [saving, setSaving] = useState(false)
 
   const isResolving = status === "RESOLVED"
-  const hasResolution = Boolean(issue.resolution?.trim())
-  const requirement = status === "PENDING_VERIFY" && !issue.rootCause
-    ? "进入待验证前，请先在处理记录中填写“根本原因”。"
-    : isResolving && !remark.trim()
-      ? "转为已解决前必须填写处理描述。"
-      : isResolving && !dtsTicketNo.trim() && !hasResolution
-        ? "请填写 DTS 系统问题单号（若为问题），或先在处理记录中填写“处理结论”（若为非问题）。"
-        : ""
+  const isClosing = status === "CLOSED"
+  const needsFlag = isResolving || isClosing
+  const flagIsProblem = issueFlag === "PROBLEM"
+  const flagIsNonProblem = issueFlag === "NON_PROBLEM"
+
+  const requirement = isResolving && !remark.trim()
+    ? "转为已解决前必须填写处理描述。"
+    : needsFlag && !issueFlag
+      ? "请先标注该事项是系统问题还是非问题。"
+      : isResolving && flagIsProblem && !dtsTicketNo.trim()
+        ? "已标注为系统问题，请填写 DTS 系统问题单号。"
+        : isResolving && flagIsNonProblem && !resolution.trim()
+          ? "已标注为非问题，请填写处理结论。"
+          : ""
 
   const canSubmit = Boolean(status) && !requirement
 
@@ -182,11 +191,13 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
     try {
       await api.post(`/issues/${issue.id}/status`, {
         status,
-        remark: remark || undefined,
-        dtsTicketNo: isResolving && dtsTicketNo.trim() ? dtsTicketNo.trim() : undefined,
+        remark: isResolving ? remark : remark || undefined,
+        issueFlag: needsFlag ? issueFlag : undefined,
+        dtsTicketNo: flagIsProblem && dtsTicketNo.trim() ? dtsTicketNo.trim() : undefined,
+        resolution: isResolving && flagIsNonProblem && resolution.trim() ? resolution.trim() : undefined,
       })
       toast.success(`已流转到「${STATUS_META[status as IssueStatus].label}」`)
-      setStatus(""); setRemark(""); setDtsTicketNo("")
+      setStatus(""); setRemark(""); setIssueFlag(""); setDtsTicketNo(""); setResolution("")
       onChanged()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "操作失败")
@@ -208,7 +219,7 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
         <div className="grid gap-4 py-2">
           <div className="flex flex-col gap-2">
             <Label>流转到</Label>
-            <Select value={status} onValueChange={(v) => { setStatus(v); if (v !== "RESOLVED") setDtsTicketNo("") }}>
+            <Select value={status} onValueChange={(v) => { setStatus(v); if (!["RESOLVED", "CLOSED"].includes(v)) setIssueFlag("") }}>
               <SelectTrigger><SelectValue placeholder="选择目标状态" /></SelectTrigger>
               <SelectContent>
                 {nextStatuses.map((s) => (
@@ -217,33 +228,77 @@ function StatusDialog({ issue, nextStatuses, onChanged }: {
               </SelectContent>
             </Select>
           </div>
+
           {isResolving && (
             <div className="flex flex-col gap-2">
               <Label>处理描述（必填）</Label>
               <Textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
-                placeholder="填写处理经过与结果；若为问题，请同时提供 DTS 单号"
+                placeholder="填写处理经过与结果"
                 rows={3}
               />
             </div>
           )}
-          {isResolving && (
+
+          {needsFlag && (
             <div className="flex flex-col gap-2">
-              <Label>DTS 系统问题单号（问题必填）</Label>
+              <Label>标注（必选）</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIssueFlag("PROBLEM")}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                    flagIsProblem ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "border-border hover:bg-accent"
+                  )}
+                >
+                  是问题
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIssueFlag("NON_PROBLEM")}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                    flagIsNonProblem ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300" : "border-border hover:bg-accent"
+                  )}
+                >
+                  非问题
+                </button>
+              </div>
+            </div>
+          )}
+
+          {needsFlag && flagIsProblem && (
+            <div className="flex flex-col gap-2">
+              <Label>DTS 系统问题单号（必填）</Label>
               <Input
                 value={dtsTicketNo}
                 onChange={(e) => setDtsTicketNo(e.target.value)}
-                placeholder="若为问题，请填写 DTS 单号"
+                placeholder="请填写 DTS 系统问题单号"
               />
             </div>
           )}
-          {!isResolving && (
+
+          {isResolving && flagIsNonProblem && (
+            <div className="flex flex-col gap-2">
+              <Label>处理结论（必填）</Label>
+              <Textarea
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+                placeholder="说明为何判定为非问题，例如：环境误报 / 用户操作问题"
+                rows={2}
+              />
+            </div>
+          )}
+
+          {!isResolving && !needsFlag && (
             <div className="flex flex-col gap-2">
               <Label>进展说明（可选）</Label>
               <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="补充说明本次状态变更" />
             </div>
           )}
+
           {requirement && (
             <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
               {requirement}
