@@ -184,20 +184,20 @@ export function IssueListPage() {
                 placeholder="产品名称"
               />
             </div>
-            <Select value={subModuleFilter === "" ? "auto" : subModuleFilter}
-              onValueChange={(v) => update({ subModuleId: v === "auto" ? "" : v, page: null })}>
-              <SelectTrigger className="w-[130px]"><SelectValue placeholder="子模块" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">本子模块（自动）</SelectItem>
-                <SelectItem value="0">全部子模块</SelectItem>
-                {dict?.subModules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
             <Select value={moduleId} onValueChange={(v) => update({ moduleId: v === "ALL" ? "" : v, page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="模块" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部模块</SelectItem>
                 {dict?.modules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {/* 子模块：默认显示当前用户归属的具体子模块名；未指定归属时默认全部 */}
+            <Select value={subModuleFilter === "" ? (user?.subModuleId ? String(user.subModuleId) : "0") : subModuleFilter}
+              onValueChange={(v) => update({ subModuleId: v === "0" ? "" : v, page: null })}>
+              <SelectTrigger className="w-[130px]"><SelectValue placeholder="子模块" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">全部子模块</SelectItem>
+                {dict?.subModules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={foundVersionName || "ALL"} onValueChange={(v) => update({ foundVersionName: v === "ALL" ? "" : v, page: null })}>
@@ -245,20 +245,24 @@ export function IssueListPage() {
                 searchPlaceholder="搜索提出人…"
               />
             </div>
-            <Input
-              type="date"
-              className="w-[140px]"
-              value={createdFrom}
-              onChange={(event) => update({ createdFrom: event.target.value, page: null })}
-              title="创建时间（起）"
-            />
-            <Input
-              type="date"
-              className="w-[140px]"
-              value={createdTo}
-              onChange={(event) => update({ createdTo: event.target.value, page: null })}
-              title="创建时间（止）"
-            />
+            <div className="flex items-center gap-1.5">
+              <span className="shrink-0 text-xs text-muted-foreground">创建时间</span>
+              <Input
+                type="date"
+                className="h-9 w-[130px]"
+                value={createdFrom}
+                onChange={(event) => update({ createdFrom: event.target.value, page: null })}
+                title="开始日期"
+              />
+              <span className="text-xs text-muted-foreground">至</span>
+              <Input
+                type="date"
+                className="h-9 w-[130px]"
+                value={createdTo}
+                onChange={(event) => update({ createdTo: event.target.value, page: null })}
+                title="结束日期"
+              />
+            </div>
             <Button
               variant={overdueOnly ? "default" : "outline"}
               size="sm"

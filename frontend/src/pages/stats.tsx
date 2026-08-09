@@ -3,8 +3,11 @@ import { Inbox, Clock, CheckCircle2, AlertTriangle, TrendingUp } from "lucide-re
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
 import { STATUS_META } from "@/lib/labels"
-import type { IssueStatus } from "@/lib/types"
+import type { Dictionaries, IssueStatus } from "@/lib/types"
 
 interface Overview {
   total: number; todayNew: number; resolved: number; unclosed: number
@@ -19,9 +22,22 @@ interface Overview {
 const STATUS_ORDER: IssueStatus[] = ["PENDING_ASSIGN", "PENDING_HANDLE", "PROCESSING", "RESOLVED", "CLOSED"]
 
 export function StatsPage() {
+  const [dict, setDict] = useState<Dictionaries | null>(null)
+  const [moduleId, setModuleId] = useState("")
+  const [subModuleId, setSubModuleId] = useState("")
   const [ov, setOv] = useState<Overview | null>(null)
 
-  useEffect(() => { api.get<Overview>("/stats/overview").then(setOv) }, [])
+  useEffect(() => {
+    api.get<Dictionaries>("/config/dictionaries").then(setDict).catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (moduleId) params.set("moduleId", moduleId)
+    if (subModuleId) params.set("subModuleId", subModuleId)
+    const qs = params.toString()
+    api.get<Overview>(`/stats/overview${qs ? `?${qs}` : ""}`).then(setOv)
+  }, [moduleId, subModuleId])
 
   if (!ov) return <PageBody><div className="text-sm text-muted-foreground">加载中…</div></PageBody>
 
@@ -41,6 +57,25 @@ export function StatsPage() {
     <>
       <PageHeader title="统计看板" subtitle="问题基础统计与团队负载" />
       <PageBody className="space-y-4">
+        {/* 筛选：模块 + 子模块 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">范围</span>
+          <Select value={moduleId} onValueChange={setModuleId}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="全部模块" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部模块</SelectItem>
+              {dict?.modules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={subModuleId} onValueChange={setSubModuleId}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="全部子模块" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部子模块</SelectItem>
+              {dict?.subModules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           {cards.map((c) => (
             <Card key={c.label}>
