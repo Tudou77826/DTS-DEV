@@ -69,17 +69,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         collapsed ? "w-16" : "w-56"
       )}>
         {/* Logo + 收起按钮 */}
-        <div className={cn("flex h-14 items-center gap-2 px-3", collapsed && "justify-between")}>
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <ClipboardList className="size-4" />
-            </div>
-            {!collapsed && (
+        <div className={cn("flex h-14 items-center px-3", collapsed ? "justify-center" : "justify-between gap-2")}>
+          {!collapsed && (
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                <ClipboardList className="size-4" />
+              </div>
               <span className="truncate text-sm font-semibold tracking-tight">
                 {customization?.branding.productName || "DTS"}
               </span>
-            )}
-          </div>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"
