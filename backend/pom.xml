@@ -70,6 +70,14 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- ArchUnit：架构约束测试 -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.3.0</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Security + JWT -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
