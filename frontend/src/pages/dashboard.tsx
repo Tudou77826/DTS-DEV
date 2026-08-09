@@ -19,19 +19,23 @@ interface Overview {
 export function DashboardPage() {
   const { user } = useAuth()
   const isLeader = user?.role === "LEADER"
+  const isSubmitter = user?.role === "SUBMITTER"
   const [my, setMy] = useState<MySummary>({ pending: 0, todayNew: 0, overdue: 0, resolved: 0 })
   const [overview, setOverview] = useState<Overview | null>(null)
   const [recent, setRecent] = useState<Issue[]>([])
 
   useEffect(() => {
-    api.get<MySummary>("/issues/my-summary").then(setMy)
     if (isLeader) {
       api.get<Overview>("/stats/overview").then(setOverview)
       api.get<{ list: Issue[] }>("/issues?size=8").then((r) => setRecent(r.list))
+    } else if (isSubmitter) {
+      // 提出人：不参与处理，展示最近提交的问题
+      api.get<{ list: Issue[] }>(`/issues?submitterId=${user.id}&size=8`).then((r) => setRecent(r.list))
     } else {
+      api.get<MySummary>("/issues/my-summary").then(setMy)
       api.get<{ list: Issue[] }>("/issues/my-tasks?tab=all&size=8").then((r) => setRecent(r.list))
     }
-  }, [isLeader])
+  }, [isLeader, isSubmitter, user?.id])
 
   const stats = isLeader && overview
     ? [
@@ -51,28 +55,30 @@ export function DashboardPage() {
     <>
       <PageHeader
         title={isLeader ? "项目负责人工作台" : "我的工作台"}
-        subtitle={isLeader ? "团队任务负载与版本遗留总览" : "查看你的待处理任务"}
+        subtitle={isLeader ? "团队任务负载与版本遗留总览" : isSubmitter ? "查看你提交的问题" : "查看你的待处理任务"}
       />
       <PageBody className="space-y-6">
-        {/* 统计卡片 */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats.map((s) => (
-            <Card key={s.label}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div
-                  className="flex size-10 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `${s.color}1a` }}
-                >
-                  <s.icon className="size-5" style={{ color: s.color }} />
-                </div>
-                <div>
-                  <div className="text-2xl font-semibold tabular-nums">{s.value}</div>
-                  <div className="text-xs text-muted-foreground">{s.label}</div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* 统计卡片（提出人无处理任务，不展示） */}
+        {!isSubmitter && (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {stats.map((s) => (
+              <Card key={s.label}>
+                <CardContent className="flex items-center gap-3 p-4">
+                  <div
+                    className="flex size-10 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: `${s.color}1a` }}
+                  >
+                    <s.icon className="size-5" style={{ color: s.color }} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold tabular-nums">{s.value}</div>
+                    <div className="text-xs text-muted-foreground">{s.label}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* 负责人：状态分布 + 长期未更新；开发：快捷入口 */}
         {isLeader && overview ? (
@@ -114,6 +120,18 @@ export function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        ) : isSubmitter ? (
+          <Card>
+            <CardContent className="flex items-center gap-3 p-5">
+              <FileWarning className="size-5 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                通过「新建问题」登记你发现的问题，在「问题列表」中跟踪处理进展。
+              </p>
+              <Link to="/issues/new" className="ml-auto text-sm text-blue-600 hover:underline">
+                新建问题 →
+              </Link>
+            </CardContent>
+          </Card>
         ) : (
           <Card>
             <CardContent className="flex items-center gap-3 p-5">
@@ -132,7 +150,9 @@ export function DashboardPage() {
         <Card>
           <CardContent className="p-0">
             <div className="border-b border-border px-5 py-3">
-              <h3 className="text-sm font-semibold">{isLeader ? "最近创建的问题" : "我最近的任务"}</h3>
+              <h3 className="text-sm font-semibold">
+                {isLeader ? "最近创建的问题" : isSubmitter ? "我最近提交的问题" : "我最近的任务"}
+              </h3>
             </div>
             <div className="divide-y divide-border">
               {recent.length === 0 && (

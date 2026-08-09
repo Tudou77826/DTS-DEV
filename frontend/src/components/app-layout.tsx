@@ -21,12 +21,14 @@ interface NavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   feature?: string
+  /** 对该角色隐藏（如提出人无处理任务） */
+  hiddenForRole?: string
 }
 
 const NAV_MAIN: NavItem[] = [
   { to: "/dashboard", label: "工作台", icon: LayoutDashboard },
   { to: "/issues", label: "问题列表", icon: ListChecks },
-  { to: "/my-tasks", label: "我的任务", icon: Inbox },
+  { to: "/my-tasks", label: "我的任务", icon: Inbox, hiddenForRole: "SUBMITTER" },
 ]
 
 const NAV_OTHER: NavItem[] = [
@@ -70,7 +72,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* 导航 */}
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2">
-          {NAV_MAIN.filter((item) => !item.feature || customization?.features[item.feature] !== false).map((item) => (
+          {NAV_MAIN.filter((item) => (!item.feature || customization?.features[item.feature] !== false)
+            && item.hiddenForRole !== user?.role).map((item) => (
             <SideLink key={item.to} {...item} />
           ))}
           <div className="my-2 h-px bg-sidebar-border" />
