@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Inbox, Loader2, AlertTriangle } from "lucide-react"
+import { Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select"
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table"
@@ -24,22 +28,29 @@ const TABS = [
 
 export function MyTasksPage() {
   const [tab, setTab] = useState("all")
+  const [page, setPage] = useState(1)
+  const [size, setSize] = useState(20)
   const [data, setData] = useState<PageResult<Issue>>({ list: [], total: 0, page: 0, size: 20, totalPages: 0 })
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
     setLoading(true)
-    api.get<PageResult<Issue>>(`/issues/my-tasks?tab=${tab}&size=50`)
+    api.get<PageResult<Issue>>(`/issues/my-tasks?tab=${tab}&page=${page}&size=${size}`)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [tab])
+  }, [tab, page, size])
+
+  const switchTab = (next: string) => {
+    setTab(next)
+    setPage(1)
+  }
 
   return (
     <>
       <PageHeader title="我的任务" subtitle="分配给你的待处理问题" />
       <PageBody className="space-y-4">
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={switchTab}>
           <TabsList className="flex h-auto flex-wrap">
             {TABS.map((t) => (
               <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
@@ -115,6 +126,41 @@ export function MyTasksPage() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+            {data.total > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">每页</span>
+                  <Select value={String(size)} onValueChange={(v) => { setSize(Number(v)); setPage(1) }}>
+                    <SelectTrigger className="h-8 w-[72px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[10, 20, 50, 100].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">条，共 {data.total} 条</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    第 {data.page} / {data.totalPages} 页
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline" size="sm" disabled={page <= 1}
+                      onClick={() => setPage(page - 1)}
+                    >
+                      <ChevronLeft className="size-4" /> 上一页
+                    </Button>
+                    <Button
+                      variant="outline" size="sm" disabled={page >= data.totalPages}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      下一页 <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

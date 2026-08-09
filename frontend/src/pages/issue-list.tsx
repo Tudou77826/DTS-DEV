@@ -55,6 +55,7 @@ export function IssueListPage() {
   const createdFrom = searchParams.get("createdFrom") || ""
   const createdTo = searchParams.get("createdTo") || ""
   const page = parseInt(searchParams.get("page") || "1")
+  const size = parseInt(searchParams.get("size") || "20")
   const overdueOnly = searchParams.get("overdue") === "1"
 
   const update = useCallback((patch: Record<string, string | null>) => {
@@ -70,7 +71,7 @@ export function IssueListPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ page: String(page), size: "20" })
+      const params = new URLSearchParams({ page: String(page), size: String(size) })
       if (keyword) params.set("keyword", keyword)
       if (status) params.set("status", status)
       if (moduleId) params.set("moduleId", moduleId)
@@ -89,7 +90,7 @@ export function IssueListPage() {
       setLoading(false)
     }
   }, [keyword, status, moduleId, productName, assigneeId, foundVersionName,
-    domainId, submitterId, createdFrom, createdTo, page, overdueOnly])
+    domainId, submitterId, createdFrom, createdTo, page, size, overdueOnly])
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
   useEffect(() => { load() }, [load])
@@ -356,24 +357,38 @@ export function IssueListPage() {
             )}
 
             {/* 分页 */}
-            {data.totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-border px-5 py-3">
-                <span className="text-xs text-muted-foreground">
-                  第 {data.page} / {data.totalPages} 页，共 {data.total} 条
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline" size="sm" disabled={page <= 1}
-                    onClick={() => update({ page: String(page - 1) })}
-                  >
-                    <ChevronLeft className="size-4" /> 上一页
-                  </Button>
-                  <Button
-                    variant="outline" size="sm" disabled={page >= data.totalPages}
-                    onClick={() => update({ page: String(page + 1) })}
-                  >
-                    下一页 <ChevronRight className="size-4" />
-                  </Button>
+            {data.total > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">每页</span>
+                  <Select value={String(size)} onValueChange={(v) => update({ size: v, page: null })}>
+                    <SelectTrigger className="h-8 w-[72px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[10, 20, 50, 100].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">条，共 {data.total} 条</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    第 {data.page} / {data.totalPages} 页
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline" size="sm" disabled={page <= 1}
+                      onClick={() => update({ page: String(page - 1) })}
+                    >
+                      <ChevronLeft className="size-4" /> 上一页
+                    </Button>
+                    <Button
+                      variant="outline" size="sm" disabled={page >= data.totalPages}
+                      onClick={() => update({ page: String(page + 1) })}
+                    >
+                      下一页 <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
