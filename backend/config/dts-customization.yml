@@ -116,7 +116,7 @@ dts:
           visible: true
         subModule:
           label: 子模块
-          placeholder: 如 PL团队（可选）
+          placeholder: 选择子模块（可选）
           required: false
           visible: true
         envInfo:
@@ -149,6 +149,7 @@ dts:
         display-name: 张项目负责人
         role: LEADER
         team: network-security
+        sub-module: 策略下发
         avatar-color: '#0ea5e9'
         active: true
       - employee-no: D1001
@@ -156,6 +157,7 @@ dts:
         display-name: 王五
         role: DEVELOPER
         team: network-security
+        sub-module: 策略下发
         avatar-color: '#10b981'
         active: true
       - employee-no: D1002
@@ -163,6 +165,7 @@ dts:
         display-name: 赵六
         role: DEVELOPER
         team: network-security
+        sub-module: 流量清洗
         avatar-color: '#f59e0b'
         active: true
       - employee-no: D1003
@@ -170,6 +173,7 @@ dts:
         display-name: 孙七
         role: DEVELOPER
         team: network-security
+        sub-module: 日志审计
         avatar-color: '#ec4899'
         active: true
       modules:
@@ -185,6 +189,11 @@ dts:
       - V500R020C10
       - V500R020C20
       - V600R001C00
+      sub-modules:
+      - 入侵检测
+      - 流量清洗
+      - 日志审计
+      - 策略下发
       domains:
       - name: 功能缺陷
         description: null

@@ -56,6 +56,7 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
   const [priority, setPriority] = useState(issue.priority)
   const [planFinishAt, setPlanFinishAt] = useState("")
   const [collaboratorIds, setCollaboratorIds] = useState<number[]>(issue.collaboratorIds || [])
+  const [subModuleId, setSubModuleId] = useState(issue.subModuleId ? String(issue.subModuleId) : "")
   const [saving, setSaving] = useState(false)
 
   const toggleCollaborator = (id: number) => {
@@ -71,6 +72,7 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
         priority,
         planFinishAt: planFinishAt ? new Date(planFinishAt).toISOString() : undefined,
         collaboratorIds: collaboratorIds.length > 0 ? collaboratorIds : undefined,
+        subModuleId: subModuleId ? Number(subModuleId) : undefined,
       })
       toast.success("已分配")
       onChanged()
@@ -146,6 +148,16 @@ function AssignDialog({ issue, dict, onChanged }: { issue: Issue; dict: Dictiona
           <div className="flex flex-col gap-2">
             <Label>计划完成时间</Label>
             <Input type="datetime-local" value={planFinishAt} onChange={(e) => setPlanFinishAt(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>子模块（可选）</Label>
+            <Select value={subModuleId || "none"} onValueChange={(v) => setSubModuleId(v === "none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="保持原有" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">不指定</SelectItem>
+                {dict?.subModules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>

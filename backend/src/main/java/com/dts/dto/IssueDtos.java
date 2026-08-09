@@ -30,8 +30,10 @@ public class IssueDtos {
         private String priority;
         /** 指定处理人（非必选，须为启用的开发人员） */
         private Long assigneeId;
-        /** 子模块（选填，如 PL团队） */
+        /** 子模块（分类标签，如 策略下发） */
         private String subModule;
+        /** 子模块 ID（关联 cfg_sub_module；处理人/负责人可在分配时或处理中调整） */
+        private Long subModuleId;
         /** 期望解决时间 */
         private LocalDateTime expectedFinishAt;
         /** DTS 系统问题单号 */
@@ -43,6 +45,8 @@ public class IssueDtos {
     public static class IssueQuery {
         public String keyword;        // 编号或关键字
         public Long moduleId;
+        /** 子模块筛选：0=全部，null=按当前用户归属自动筛选，>0=指定子模块 */
+        public Long subModuleId;
         public String productName;
         public Long domainId;
         public String status;
@@ -65,7 +69,9 @@ public class IssueDtos {
         private List<Long> collaboratorIds;
         private String priority;
         private LocalDateTime planFinishAt;
-        /** 状态（可选，分配时通常切到 待定位/定位中） */
+        /** 子模块 ID（可选，负责人分配时标注/流转归属） */
+        private Long subModuleId;
+        /** 状态（可选，分配时通常切到 待处理） */
         private String status;
         private String remark;
     }

@@ -141,6 +141,23 @@ public class ConfigController {
         return ApiResponse.ok();
     }
 
+    // ─── 子模块 ───
+    @GetMapping("/sub-modules")
+    public ApiResponse<List<SubModule>> subModules() {
+        return ApiResponse.ok(configService.listSubModules());
+    }
+
+    @PostMapping("/sub-modules")
+    public ApiResponse<SubModule> saveSubModule(@RequestBody SubModule m) {
+        return ApiResponse.ok(configService.saveSubModule(m));
+    }
+
+    @DeleteMapping("/sub-modules/{id}")
+    public ApiResponse<Void> deleteSubModule(@PathVariable Long id) {
+        configService.deleteSubModule(id);
+        return ApiResponse.ok();
+    }
+
     // ─── 问题领域 ───
     @GetMapping("/domains")
     public ApiResponse<List<IssueDomain>> domains() {

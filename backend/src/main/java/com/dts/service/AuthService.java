@@ -47,7 +47,7 @@ public class AuthService {
             throw new BusinessException(401, "用户名或密码错误");
         }
         String token = jwtUtil.generate(user.getId(), user.getUsername(), user.getDisplayName(),
-                user.getRole(), user.getEmployeeNo(), user.getAvatarColor());
+                user.getRole(), user.getEmployeeNo(), user.getAvatarColor(), user.getSubModuleId());
         return buildResponse(token, user);
     }
 
@@ -80,7 +80,7 @@ public class AuthService {
                 .build();
         userMapper.insert(user);
         String token = jwtUtil.generate(user.getId(), user.getUsername(), user.getDisplayName(),
-                user.getRole(), user.getEmployeeNo(), user.getAvatarColor());
+                user.getRole(), user.getEmployeeNo(), user.getAvatarColor(), user.getSubModuleId());
         return buildResponse(token, user);
     }
 
@@ -94,6 +94,7 @@ public class AuthService {
         vo.setEmail(user.getEmail());
         vo.setPhone(user.getPhone());
         vo.setAvatarColor(user.getAvatarColor());
+        vo.setSubModuleId(user.getSubModuleId());
         AuthDtos.LoginResponse resp = new AuthDtos.LoginResponse();
         resp.setToken(token);
         resp.setUser(vo);

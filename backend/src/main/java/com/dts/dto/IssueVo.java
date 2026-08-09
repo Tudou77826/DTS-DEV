@@ -18,6 +18,7 @@ public class IssueVo {
 
     private Long moduleId;
     private String moduleName;
+    private Long subModuleId;
     private String subModule;
     private String dtsTicketNo;
 

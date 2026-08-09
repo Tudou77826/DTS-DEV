@@ -25,9 +25,9 @@ public class JwtUtil {
         this.expirationMs = expirationMs;
     }
 
-    public String generate(Long userId, String username, String displayName, String role, String employeeNo, String avatarColor) {
+    public String generate(Long userId, String username, String displayName, String role, String employeeNo, String avatarColor, Long subModuleId) {
         Date now = new Date();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
                 .claim("displayName", displayName)
@@ -36,8 +36,11 @@ public class JwtUtil {
                 .claim("avatarColor", avatarColor)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
-                .signWith(key)
-                .compact();
+                .signWith(key);
+        if (subModuleId != null) {
+            builder.claim("subModuleId", subModuleId);
+        }
+        return builder.compact();
     }
 
     /** 签发短时管理员令牌（用于接入定制页的共享密码门禁）。 */

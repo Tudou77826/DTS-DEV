@@ -22,6 +22,8 @@ public class LoginUser implements UserDetails {
     private final String role; // SUBMITTER / DEVELOPER / LEADER
     private final String employeeNo;
     private final String avatarColor;
+    /** 归属子模块 ID（null 表示无归属，如提出人） */
+    private final Long subModuleId;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

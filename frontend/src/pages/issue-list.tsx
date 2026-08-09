@@ -57,6 +57,8 @@ export function IssueListPage() {
   const page = parseInt(searchParams.get("page") || "1")
   const size = parseInt(searchParams.get("size") || "20")
   const overdueOnly = searchParams.get("overdue") === "1"
+  /** 子模块：""=自动（按当前用户归属子模块），0=全部，>0=指定 */
+  const subModuleFilter = searchParams.get("subModuleId") ?? ""
 
   const update = useCallback((patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams)
@@ -83,6 +85,7 @@ export function IssueListPage() {
       if (createdFrom) params.set("createdFrom", `${createdFrom}T00:00:00`)
       if (createdTo) params.set("createdTo", `${createdTo}T23:59:59`)
       if (overdueOnly) params.set("overdue", "1")
+      if (subModuleFilter !== "") params.set("subModuleId", subModuleFilter)
       const result = await api.get<PageResult<Issue>>(`/issues?${params.toString()}`)
       setData(result)
       setSelected([])
@@ -90,7 +93,7 @@ export function IssueListPage() {
       setLoading(false)
     }
   }, [keyword, status, moduleId, productName, assigneeId, foundVersionName,
-    domainId, submitterId, createdFrom, createdTo, page, size, overdueOnly])
+    domainId, submitterId, createdFrom, createdTo, page, size, overdueOnly, subModuleFilter])
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
   useEffect(() => { load() }, [load])
@@ -110,6 +113,7 @@ export function IssueListPage() {
     if (createdFrom) params.set("createdFrom", `${createdFrom}T00:00:00`)
     if (createdTo) params.set("createdTo", `${createdTo}T23:59:59`)
     if (overdueOnly) params.set("overdue", "1")
+    if (subModuleFilter !== "") params.set("subModuleId", subModuleFilter)
     return params
   }
 
@@ -180,6 +184,15 @@ export function IssueListPage() {
                 placeholder="产品名称"
               />
             </div>
+            <Select value={subModuleFilter === "" ? "auto" : subModuleFilter}
+              onValueChange={(v) => update({ subModuleId: v === "auto" ? "" : v, page: null })}>
+              <SelectTrigger className="w-[130px]"><SelectValue placeholder="子模块" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">本子模块（自动）</SelectItem>
+                <SelectItem value="0">全部子模块</SelectItem>
+                {dict?.subModules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={moduleId} onValueChange={(v) => update({ moduleId: v === "ALL" ? "" : v, page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="模块" /></SelectTrigger>
               <SelectContent>
@@ -290,6 +303,7 @@ export function IssueListPage() {
                     <TableHead className="w-[150px]">编号</TableHead>
                     <TableHead>标题</TableHead>
                     <TableHead className="w-[130px]">所属模块</TableHead>
+                    <TableHead className="w-[120px]">子模块</TableHead>
                     <TableHead className="w-[140px]">来源产品</TableHead>
                     <TableHead className="w-[140px]">发现版本</TableHead>
                     <TableHead className="w-[90px]">优先级</TableHead>
@@ -331,6 +345,7 @@ export function IssueListPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{issue.moduleName || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{issue.subModule || "-"}</TableCell>
                       <TableCell className="text-muted-foreground">{issue.productName || "-"}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{issue.foundVersionName || "-"}</TableCell>
                       <TableCell>

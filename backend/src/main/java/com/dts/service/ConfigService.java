@@ -25,6 +25,7 @@ public class ConfigService {
     private final ProductMapper productMapper;
     private final ModuleMapper moduleMapper;
     private final ProductVersionMapper versionMapper;
+    private final SubModuleMapper subModuleMapper;
     private final IssueDomainMapper domainMapper;
     private final DtsCustomizationProperties customization;
 
@@ -120,6 +121,23 @@ public class ConfigService {
         domainMapper.deleteById(id);
     }
 
+    // ─── 子模块 ───
+    public List<SubModule> listSubModules() {
+        return subModuleMapper.selectList(Wrappers.<SubModule>lambdaQuery()
+                .eq(SubModule::getActive, true)
+                .orderByAsc(SubModule::getId));
+    }
+
+    @Transactional
+    public SubModule saveSubModule(SubModule sub) {
+        return save(subModuleMapper, sub);
+    }
+
+    @Transactional
+    public void deleteSubModule(Long id) {
+        subModuleMapper.deleteById(id);
+    }
+
     /**
      * 一次性返回前端筛选用到的所有字典（减少请求次数）。
      */
@@ -131,6 +149,7 @@ public class ConfigService {
                 "products", listProducts(),
                 "modules", listModules(null),
                 "versions", listVersions(null),
+                "subModules", listSubModules(),
                 "domains", listDomains(),
                 "customization", customization);
     }

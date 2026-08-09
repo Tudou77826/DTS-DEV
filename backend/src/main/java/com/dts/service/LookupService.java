@@ -21,6 +21,19 @@ public class LookupService {
     private final ModuleMapper moduleMapper;
     private final ProductVersionMapper versionMapper;
     private final IssueDomainMapper domainMapper;
+    private final SubModuleMapper subModuleMapper;
+
+    public Map<Long, String> subModuleNames(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) return Map.of();
+        return subModuleMapper.selectByIds(ids).stream()
+                .collect(Collectors.toMap(SubModule::getId, SubModule::getName));
+    }
+
+    public String subModuleName(Long id) {
+        if (id == null) return null;
+        SubModule sub = subModuleMapper.selectById(id);
+        return sub == null ? null : sub.getName();
+    }
 
     public Map<Long, String> userNames(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) return Map.of();

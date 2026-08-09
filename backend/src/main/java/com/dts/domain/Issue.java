@@ -34,8 +34,11 @@ public class Issue extends BaseEntity {
     /** 所属模块 */
     private Long moduleId;
 
-    /** 子模块（选填，如 PL团队） */
+    /** 子模块（分类标签，如 策略下发） */
     private String subModule;
+
+    /** 子模块 ID（关联 cfg_sub_module，处理人/负责人可流转） */
+    private Long subModuleId;
 
     /** DTS 系统问题单号（转已解决时按需填写） */
     private String dtsTicketNo;

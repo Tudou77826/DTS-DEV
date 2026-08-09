@@ -24,6 +24,8 @@ export interface User {
   phone?: string
   avatarColor?: string
   active?: boolean
+  /** 归属子模块 ID（null 表示无归属，如提出人） */
+  subModuleId?: number | null
 }
 
 /** 认证方式：local = 本地账号密码；oauth = 反向代理注入用户头 */
@@ -40,6 +42,7 @@ export interface AdminVerifyResult {
 export interface Product { id: number; name: string; description?: string; active?: boolean }
 export interface ProductVersion { id: number; productId?: number; version: string; description?: string; active?: boolean }
 export interface ProductModule { id: number; productId?: number; name: string; description?: string; active?: boolean }
+export interface SubModule { id: number; name: string; description?: string; active?: boolean }
 export interface IssueDomain { id: number; name: string; description?: string }
 export interface Team { id: number; name: string; description?: string }
 
@@ -50,6 +53,7 @@ export interface Dictionaries {
   products: Product[]
   versions: ProductVersion[]
   modules: ProductModule[]
+  subModules: SubModule[]
   domains: IssueDomain[]
   customization: DtsCustomization
 }
@@ -145,6 +149,7 @@ export interface Issue {
   updatedAt: string
   moduleId?: number
   moduleName?: string
+  subModuleId?: number
   subModule?: string
   dtsTicketNo?: string
   title: string

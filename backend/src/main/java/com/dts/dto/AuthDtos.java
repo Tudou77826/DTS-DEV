@@ -45,6 +45,8 @@ public class AuthDtos {
         private String email;
         private String phone;
         private String avatarColor;
+        /** 归属子模块 ID（null 表示无归属，如提出人） */
+        private Long subModuleId;
     }
 
     @Data

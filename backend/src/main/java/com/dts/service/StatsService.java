@@ -50,6 +50,19 @@ public class StatsService {
                 moduleNamed.put(name, moduleDist.getOrDefault(id, 0L)));
         m.put("moduleDist", moduleNamed);
 
+        // 各子模块分布
+        Map<String, Long> subModuleDist = new HashMap<>();
+        List<Issue> allIssues = issueMapper.selectList(null);
+        for (Issue issue : allIssues) {
+            if (issue.getSubModuleId() != null) {
+                String name = lookup.subModuleName(issue.getSubModuleId());
+                if (name != null) subModuleDist.merge(name, 1L, Long::sum);
+            } else if (issue.getSubModule() != null && !issue.getSubModule().isBlank()) {
+                subModuleDist.merge(issue.getSubModule(), 1L, Long::sum);
+            }
+        }
+        m.put("subModuleDist", subModuleDist);
+
         // 各开发人员待处理数
         Map<Long, Long> devDist = new HashMap<>();
         issueMapper.countPendingByAssignee().forEach(b -> devDist.put(Long.valueOf(b.getBucket()), b.getCnt()));

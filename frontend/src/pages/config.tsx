@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import type { Product, ProductModule, ProductVersion, IssueDomain, Team } from "@/lib/types"
+import type { Product, ProductModule, ProductVersion, SubModule, IssueDomain, Team } from "@/lib/types"
 
 export function ConfigPage() {
   return (
@@ -24,12 +24,14 @@ export function ConfigPage() {
             <TabsTrigger value="products"><Package className="size-4" /> 产品</TabsTrigger>
             <TabsTrigger value="versions"><Layers3 className="size-4" /> 版本</TabsTrigger>
             <TabsTrigger value="modules"><Boxes className="size-4" /> 模块</TabsTrigger>
+            <TabsTrigger value="submodules"><Layers3 className="size-4" /> 子模块</TabsTrigger>
             <TabsTrigger value="domains">问题领域</TabsTrigger>
             <TabsTrigger value="teams"><Users className="size-4" /> 团队</TabsTrigger>
           </TabsList>
           <TabsContent value="products" className="mt-4"><ProductsPanel /></TabsContent>
           <TabsContent value="versions" className="mt-4"><VersionsPanel /></TabsContent>
           <TabsContent value="modules" className="mt-4"><ModulesPanel /></TabsContent>
+          <TabsContent value="submodules" className="mt-4"><SubModulesPanel /></TabsContent>
           <TabsContent value="domains" className="mt-4"><DomainsPanel /></TabsContent>
           <TabsContent value="teams" className="mt-4"><TeamsPanel /></TabsContent>
         </Tabs>
@@ -78,6 +80,41 @@ function ModulesPanel() {
               <div key={m.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                 <span className="font-medium">{m.name}</span>
                 <DeleteBtn onConfirm={async () => { await api.del(`/config/modules/${m.id}`); toast.success("已删除"); load() }} />
+              </div>
+            ))}
+            {items.length === 0 && <Empty />}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SubModulesPanel() {
+  const { items, loading, load } = useSimpleList<SubModule>("/config/sub-modules", "子模块")
+  const [name, setName] = useState("")
+  const [saving, setSaving] = useState(false)
+  const add = async () => {
+    if (!name.trim()) return toast.error("请输入名称")
+    setSaving(true)
+    try { await api.post("/config/sub-modules", { name: name.trim(), active: true }); setName(""); toast.success("已添加"); load() }
+    finally { setSaving(false) }
+  }
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="flex items-center gap-2 border-b border-border p-3">
+          <NameInput value={name} onChange={setName} placeholder="子模块名称，如 策略下发" />
+          <Button size="sm" onClick={add} disabled={saving}>
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} 添加
+          </Button>
+        </div>
+        {loading ? <ListSkeleton /> : (
+          <div className="divide-y divide-border">
+            {items.map((m) => (
+              <div key={m.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <span className="font-medium">{m.name}</span>
+                <DeleteBtn onConfirm={async () => { await api.del(`/config/sub-modules/${m.id}`); toast.success("已删除"); load() }} />
               </div>
             ))}
             {items.length === 0 && <Empty />}

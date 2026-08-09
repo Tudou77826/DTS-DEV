@@ -89,7 +89,7 @@ public class HeaderAuthFilter extends OncePerRequestFilter {
             throw new BusinessException(403, "账号已被停用");
         }
         LoginUser loginUser = new LoginUser(user.getId(), user.getUsername(), user.getDisplayName(),
-                user.getRole(), user.getEmployeeNo(), user.getAvatarColor());
+                user.getRole(), user.getEmployeeNo(), user.getAvatarColor(), user.getSubModuleId());
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(loginUser, null, loginUser.getAuthorities());
         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

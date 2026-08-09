@@ -121,6 +121,8 @@ public class DtsCustomizationProperties {
         private String displayName;
         private String role;
         private String team;
+        /** 归属子模块（引用 master-data.sub-modules 中的名称），用于列表自动筛选 */
+        private String subModule;
         private String avatarColor;
         private boolean active = true;
     }
@@ -135,6 +137,8 @@ public class DtsCustomizationProperties {
         private List<String> products = new ArrayList<>();
         /** 版本枚举（下拉选项，可按接入团队定制；允许自定义输入不受此限制） */
         private List<String> versions = new ArrayList<>();
+        /** 子模块枚举（分类标签，开发/负责人归属） */
+        private List<String> subModules = new ArrayList<>();
         private List<DomainOption> domains = new ArrayList<>();
     }
 }

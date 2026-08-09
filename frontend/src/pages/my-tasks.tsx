@@ -79,6 +79,7 @@ export function MyTasksPage() {
                     <TableHead className="w-[150px]">编号</TableHead>
                     <TableHead>标题</TableHead>
                     <TableHead className="w-[130px]">所属模块</TableHead>
+                    <TableHead className="w-[120px]">子模块</TableHead>
                     <TableHead className="w-[140px]">来源产品</TableHead>
                     <TableHead className="w-[140px]">发现版本</TableHead>
                     <TableHead className="w-[90px]">优先级</TableHead>
@@ -113,6 +114,7 @@ export function MyTasksPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{issue.moduleName || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{issue.subModule || "-"}</TableCell>
                       <TableCell className="text-muted-foreground">{issue.productName || "-"}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{issue.foundVersionName || "-"}</TableCell>
                       <TableCell>

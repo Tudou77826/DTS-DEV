@@ -15,6 +15,7 @@ import com.dts.mapper.CommentMapper;
 import com.dts.mapper.IssueMapper;
 import com.dts.mapper.IssueProgressMapper;
 import com.dts.mapper.OperationLogMapper;
+import com.dts.mapper.SubModuleMapper;
 import com.dts.security.LoginUser;
 import com.dts.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class IssueService {
     private final IssueProgressMapper progressMapper;
     private final CommentMapper commentMapper;
     private final OperationLogMapper operationLogMapper;
+    private final SubModuleMapper subModuleMapper;
     private final LookupService lookup;
     private final IssuePermissionService permissionService;
     private final NotificationService notificationService;
@@ -52,10 +54,12 @@ public class IssueService {
         String description = sanitizeDescription(req.getDescription());
         if (!sanitizer.hasText(description)) throw new BusinessException("问题描述不能为空");
         validateVpnRequired(req.getVpnInfo());
+        Long subModuleId = resolveSubModule(req.getSubModuleId(), req.getSubModule());
         Issue issue = Issue.builder()
                 .raisedAt(LocalDateTime.now())
                 .moduleId(req.getModuleId())
-                .subModule(sanitizeOptionalLabel(req.getSubModule(), "子模块"))
+                .subModuleId(subModuleId)
+                .subModule(subModuleId == null ? sanitizeOptionalLabel(req.getSubModule(), "子模块") : null)
                 .dtsTicketNo(sanitizeOptionalLabel(req.getDtsTicketNo(), "DTS 单号"))
                 .title(title)
                 .description(description)
@@ -125,7 +129,11 @@ public class IssueService {
             validateVpnRequired(req.getVpnInfo());
             issue.setVpnInfo(sanitizer.plainText(req.getVpnInfo()));
         }
-        if (req.getSubModule() != null) issue.setSubModule(sanitizeOptionalLabel(req.getSubModule(), "子模块"));
+        if (req.getSubModule() != null || req.getSubModuleId() != null) {
+            Long subModuleId = resolveSubModule(req.getSubModuleId(), req.getSubModule());
+            issue.setSubModuleId(subModuleId);
+            if (subModuleId != null) issue.setSubModule(null);
+        }
         if (req.getDtsTicketNo() != null) issue.setDtsTicketNo(sanitizeOptionalLabel(req.getDtsTicketNo(), "DTS 单号"));
         if (req.getExpectedFinishAt() != null) issue.setExpectedFinishAt(req.getExpectedFinishAt());
         if (req.getAssigneeId() != null) {
@@ -148,10 +156,26 @@ public class IssueService {
 
     @Transactional(readOnly = true)
     public PageResult<IssueVo> page(IssueDtos.IssueQuery q) {
+        applySubModuleScope(q);
         LambdaQueryWrapper<Issue> wrapper = buildQueryWrapper(q);
         IPage<Issue> result = issueMapper.selectPage(
                 new Page<>(Math.max(1, q.getPage()), normalizePageSize(q.getSize())), wrapper);
         return PageResult.of(result, toVoList(result.getRecords()));
+    }
+
+    /**
+     * 子模块自动筛选：请求未显式指定时，按当前用户归属子模块过滤
+     * （提出人无归属则全量）；subModuleId=0 表示查看全部。
+     */
+    private void applySubModuleScope(IssueDtos.IssueQuery q) {
+        if (q.getSubModuleId() == null) {
+            LoginUser me = SecurityUtil.current();
+            if (me.getSubModuleId() != null) {
+                q.setSubModuleId(me.getSubModuleId());
+            }
+        } else if (q.getSubModuleId() == 0L) {
+            q.setSubModuleId(null);
+        }
     }
 
     private LambdaQueryWrapper<Issue> buildQueryWrapper(IssueDtos.IssueQuery q) {
@@ -168,6 +192,7 @@ public class IssueService {
                     .or().like(Issue::getVpnInfo, keyword));
         }
         wrapper.eq(q.getModuleId() != null, Issue::getModuleId, q.getModuleId())
+                .eq(q.getSubModuleId() != null && q.getSubModuleId() > 0, Issue::getSubModuleId, q.getSubModuleId())
                 .like(q.getProductName() != null && !q.getProductName().isBlank(),
                         Issue::getProductName, q.getProductName() == null ? null : q.getProductName().trim())
                 .eq(q.getDomainId() != null, Issue::getDomainId, q.getDomainId())
@@ -235,6 +260,11 @@ public class IssueService {
         }
         if (req.getPlanFinishAt() != null) {
             issue.setPlanFinishAt(req.getPlanFinishAt());
+        }
+        if (req.getSubModuleId() != null) {
+            Long subModuleId = resolveSubModule(req.getSubModuleId(), null);
+            issue.setSubModuleId(subModuleId);
+            if (subModuleId != null) issue.setSubModule(null);
         }
         // 分配时若无定位开始时间，状态切到 待处理（开发尚未开始）
         if (req.getStatus() != null) {
@@ -609,6 +639,28 @@ public class IssueService {
     }
 
     /**
+     * 解析子模块：优先按 ID 校验字典，其次按名称精确匹配字典；都不匹配返回 null（保持不归属）。
+     * 子模块是受管分类，不允许自由输入。
+     */
+    private Long resolveSubModule(Long subModuleId, String subModuleName) {
+        if (subModuleId != null) {
+            SubModule sub = subModuleMapper.selectById(subModuleId);
+            if (sub == null || !Boolean.TRUE.equals(sub.getActive())) {
+                throw new BusinessException("子模块不存在: " + subModuleId);
+            }
+            return sub.getId();
+        }
+        if (subModuleName != null && !subModuleName.isBlank()) {
+            SubModule sub = subModuleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<SubModule>lambdaQuery()
+                    .eq(SubModule::getName, subModuleName.trim())
+                    .eq(SubModule::getActive, true).last("LIMIT 1"));
+            return sub == null ? null : sub.getId();
+        }
+        return null;
+    }
+
+    /**
      * 按接入配置的 vpnInfo 字段定义校验必填（新建/编辑时都生效）。
      */
     private void validateVpnRequired(String rawVpnInfo) {
@@ -663,7 +715,9 @@ public class IssueService {
             vo.setUpdatedAt(i.getUpdatedAt());
             vo.setModuleId(i.getModuleId());
             vo.setModuleName(safeGet(moduleMap, i.getModuleId()));
-            vo.setSubModule(i.getSubModule());
+            vo.setSubModuleId(i.getSubModuleId());
+            vo.setSubModule(i.getSubModuleId() != null
+                    ? lookup.subModuleName(i.getSubModuleId()) : i.getSubModule());
             vo.setDtsTicketNo(i.getDtsTicketNo());
             vo.setTitle(i.getTitle());
             vo.setDescription(i.getDescription());

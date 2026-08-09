@@ -11,6 +11,7 @@ interface Overview {
   unassigned: number; overdue: number
   statusDist: Record<string, number>
   moduleDist: Record<string, number>
+  subModuleDist: Record<string, number>
   assigneePending: Record<string, number>
 }
 
@@ -106,6 +107,30 @@ export function StatsPage() {
                   )
                 })}
                 {Object.keys(ov.moduleDist).length === 0 && <p className="text-sm text-muted-foreground">暂无数据</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 各子模块 */}
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="mb-4 text-sm font-semibold">各子模块问题数量</h3>
+              <div className="space-y-2.5">
+                {Object.entries(ov.subModuleDist).map(([mod, count]) => {
+                  const pct = (count / maxModule) * 100
+                  return (
+                    <div key={mod} className="flex items-center gap-3">
+                      <div className="w-24 truncate text-sm">{mod}</div>
+                      <div className="h-5 flex-1 overflow-hidden rounded bg-muted">
+                        <div className="flex h-full items-center rounded bg-teal-500 px-2 text-[10px] font-medium text-white"
+                          style={{ width: `${Math.max(8, pct)}%` }}>
+                          {count}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {Object.keys(ov.subModuleDist).length === 0 && <p className="text-sm text-muted-foreground">暂无数据</p>}
               </div>
             </CardContent>
           </Card>

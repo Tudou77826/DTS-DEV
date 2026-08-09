@@ -8,6 +8,7 @@ import com.dts.mapper.CommentMapper;
 import com.dts.mapper.IssueMapper;
 import com.dts.mapper.IssueProgressMapper;
 import com.dts.mapper.OperationLogMapper;
+import com.dts.mapper.SubModuleMapper;
 import com.dts.security.LoginUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,7 @@ class IssueServiceCreateCodeRetryTest {
                 mock(IssueProgressMapper.class),
                 mock(CommentMapper.class),
                 mock(OperationLogMapper.class),
+                mock(SubModuleMapper.class),
                 lookup,
                 permissionService,
                 notificationService,
@@ -61,7 +63,7 @@ class IssueServiceCreateCodeRetryTest {
                 customization,
                 featureGuard);
 
-        LoginUser user = new LoginUser(1L, "zhangsan", "张三", "SUBMITTER", "E001", "#000000");
+        LoginUser user = new LoginUser(1L, "zhangsan", "张三", "SUBMITTER", "E001", "#000000", null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }

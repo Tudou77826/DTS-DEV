@@ -38,7 +38,7 @@ export function IssueNewPage() {
     foundVersionName: "",
     priority: "" as Priority,
     assigneeId: "",
-    subModule: "",
+    subModuleId: "",
     expectedFinishAt: "",
   })
 
@@ -63,7 +63,7 @@ export function IssueNewPage() {
         foundVersionName: issue.foundVersionName || "",
         priority: (issue.priority || "") as Priority,
         assigneeId: issue.assigneeId ? String(issue.assigneeId) : "",
-        subModule: issue.subModule || "",
+        subModuleId: issue.subModuleId ? String(issue.subModuleId) : "",
         expectedFinishAt: issue.expectedFinishAt ? toDateTimeLocal(issue.expectedFinishAt) : "",
       })
     }).finally(() => setLoading(false))
@@ -94,7 +94,7 @@ export function IssueNewPage() {
         foundVersionName: form.foundVersionName.trim() || undefined,
         priority: form.priority,
         assigneeId: form.assigneeId ? Number(form.assigneeId) : undefined,
-        subModule: form.subModule.trim() || undefined,
+        subModuleId: form.subModuleId ? Number(form.subModuleId) : undefined,
         expectedFinishAt: form.expectedFinishAt || undefined,
       }
       if (isEdit && editId) {
@@ -221,12 +221,13 @@ export function IssueNewPage() {
               </Select>
             </ConfiguredField>
             <ConfiguredField config={field("subModule")}>
-              <Input
-                value={form.subModule}
-                onChange={(event) => set("subModule", event.target.value)}
-                placeholder={field("subModule")?.placeholder || "如 PL团队"}
-                maxLength={255}
-              />
+              <Select value={form.subModuleId || "none"} onValueChange={(v) => set("subModuleId", v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder={field("subModule")?.placeholder} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">不指定子模块</SelectItem>
+                  {dict?.subModules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </ConfiguredField>
             <ConfiguredField config={field("product")}>
               <Combobox

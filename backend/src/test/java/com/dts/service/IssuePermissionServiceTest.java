@@ -45,13 +45,13 @@ class IssuePermissionServiceTest {
     }
 
     private void login(Long id, String role) {
-        LoginUser user = new LoginUser(id, "u" + id, "用户" + id, role, "E" + id, "#000000");
+        LoginUser user = new LoginUser(id, "u" + id, "用户" + id, role, "E" + id, "#000000", null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     private void loginAdmin(Long id, String role) {
-        LoginUser user = new LoginUser(id, "u" + id, "用户" + id, role, "E" + id, "#000000");
+        LoginUser user = new LoginUser(id, "u" + id, "用户" + id, role, "E" + id, "#000000", null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null,
                         List.of(new SimpleGrantedAuthority("ROLE_" + role),

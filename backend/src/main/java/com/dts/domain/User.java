@@ -40,6 +40,9 @@ public class User extends BaseEntity {
     /** 所属团队 ID */
     private Long teamId;
 
+    /** 归属子模块 ID（开发/负责人，用于列表自动筛选） */
+    private Long subModuleId;
+
     /** 头像色（用于前端生成头像底色） */
     private String avatarColor;
 

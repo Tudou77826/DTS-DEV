@@ -26,6 +26,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ModuleMapper moduleMapper;
     private final ProductMapper productMapper;
     private final ProductVersionMapper versionMapper;
+    private final SubModuleMapper subModuleMapper;
     private final IssueDomainMapper domainMapper;
     private final PasswordEncoder passwordEncoder;
     private final DtsCustomizationProperties customization;
@@ -44,6 +45,18 @@ public class DataInitializer implements CommandLineRunner {
      * 已有账号的密码不会被配置同步覆盖。
      */
     private void syncOrganization() {
+        // 先同步子模块字典（用户归属引用子模块名称）
+        Map<String, Long> subModuleIds = new LinkedHashMap<>();
+        for (String name : customization.getMasterData().getSubModules()) {
+            SubModule existing = subModuleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<SubModule>lambdaQuery()
+                    .eq(SubModule::getName, name).last("LIMIT 1"));
+            if (existing == null) {
+                existing = insert(subModuleMapper, SubModule.builder().name(name).active(true).build());
+            }
+            subModuleIds.put(name, existing.getId());
+        }
+
         Map<String, Long> teamIds = new LinkedHashMap<>();
         for (DtsCustomizationProperties.TeamOption configured : customization.getMasterData().getTeams()) {
             Team team = teamMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<Team>lambdaQuery()
@@ -82,6 +95,7 @@ public class DataInitializer implements CommandLineRunner {
             user.setDisplayName(configured.getDisplayName());
             user.setRole(configured.getRole());
             user.setTeamId(teamIds.get(configured.getTeam()));
+            user.setSubModuleId(subModuleIds.get(configured.getSubModule()));
             user.setAvatarColor(configured.getAvatarColor());
             user.setActive(configured.isActive());
             if (isNew) {
