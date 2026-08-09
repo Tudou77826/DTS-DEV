@@ -14,6 +14,9 @@ interface Overview {
   assigneePending: Record<string, number>
 }
 
+/** 状态机顺序（待分配 → 待处理 → 处理中 → 已解决 → 已关闭），统计展示按此固定排序 */
+const STATUS_ORDER: IssueStatus[] = ["PENDING_ASSIGN", "PENDING_HANDLE", "PROCESSING", "RESOLVED", "CLOSED"]
+
 export function StatsPage() {
   const [ov, setOv] = useState<Overview | null>(null)
 
@@ -57,25 +60,28 @@ export function StatsPage() {
             <CardContent className="p-5">
               <h3 className="mb-4 text-sm font-semibold">各状态问题数量</h3>
               <div className="space-y-2.5">
-                {Object.entries(ov.statusDist).map(([status, count]) => {
-                  const meta = STATUS_META[status as IssueStatus] || { label: status, dot: "#a1a1a1" }
-                  const pct = (count / Math.max(1, ov.total)) * 100
-                  return (
-                    <div key={status} className="flex items-center gap-3">
-                      <div className="flex w-28 items-center gap-1.5 text-sm">
-                        <span className="size-2 rounded-full" style={{ backgroundColor: meta.dot }} />
-                        {meta.label}
-                      </div>
-                      <div className="h-5 flex-1 overflow-hidden rounded bg-muted">
-                        <div className="flex h-full items-center rounded px-2 text-[10px] font-medium text-white"
-                          style={{ width: `${Math.max(8, pct)}%`, backgroundColor: meta.dot }}>
-                          {count}
+                {STATUS_ORDER
+                  .filter((status) => (ov.statusDist[status] ?? 0) > 0)
+                  .map((status) => {
+                    const count = ov.statusDist[status] ?? 0
+                    const meta = STATUS_META[status] || { label: status, dot: "#a1a1a1" }
+                    const pct = (count / Math.max(1, ov.total)) * 100
+                    return (
+                      <div key={status} className="flex items-center gap-3">
+                        <div className="flex w-28 items-center gap-1.5 text-sm">
+                          <span className="size-2 rounded-full" style={{ backgroundColor: meta.dot }} />
+                          {meta.label}
+                        </div>
+                        <div className="h-5 flex-1 overflow-hidden rounded bg-muted">
+                          <div className="flex h-full items-center rounded px-2 text-[10px] font-medium text-white"
+                            style={{ width: `${Math.max(8, pct)}%`, backgroundColor: meta.dot }}>
+                            {count}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-                {Object.keys(ov.statusDist).length === 0 && <p className="text-sm text-muted-foreground">暂无数据</p>}
+                    )
+                  })}
+                {STATUS_ORDER.every((status) => !(ov.statusDist[status] ?? 0)) && <p className="text-sm text-muted-foreground">暂无数据</p>}
               </div>
             </CardContent>
           </Card>
