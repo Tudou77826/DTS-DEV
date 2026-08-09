@@ -55,7 +55,7 @@ export function FeedbackPage() {
 
   return (
     <>
-      <PageHeader title="站内反馈" subtitle="反馈问题、改进建议或使用体验，项目负责人会及时处理" />
+      <PageHeader title="使用反馈" subtitle="反馈问题、改进建议或使用体验，项目负责人会及时处理" />
       <PageBody className="space-y-6">
         <Card>
           <CardContent className="space-y-4 p-5">

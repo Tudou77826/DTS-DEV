@@ -50,7 +50,7 @@ public class NotificationService {
                 .isNull(Notification::getReadAt));
     }
 
-    /** 项目负责人（LEADER）的用户 ID 列表，用于站内反馈等需要知会负责人的场景。 */
+    /** 项目负责人（LEADER）的用户 ID 列表，用于使用反馈等需要知会负责人的场景。 */
     public List<Long> leaderUserIds() {
         return userMapper.selectList(Wrappers.<com.dts.domain.User>lambdaQuery()
                         .eq(com.dts.domain.User::getRole, "LEADER")

@@ -9,7 +9,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/** 站内反馈（用户提交，项目负责人处理）。 */
+/** 使用反馈（用户提交，项目负责人处理）。 */
 @Getter
 @Setter
 @TableName("sys_feedback")

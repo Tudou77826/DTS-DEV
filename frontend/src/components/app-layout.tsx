@@ -32,7 +32,7 @@ const NAV_MAIN: NavItem[] = [
 const NAV_OTHER: NavItem[] = [
   { to: "/stats", label: "统计看板", icon: BarChart3 },
   { to: "/config", label: "基础配置", icon: Settings },
-  { to: "/feedback", label: "站内反馈", icon: MessageSquareText },
+  { to: "/feedback", label: "使用反馈", icon: MessageSquareText },
   // 接入定制入口对所有登录用户可见，进入后通过共享管理员密码门禁
   { to: "/customization", label: "接入定制", icon: SlidersHorizontal },
 ]

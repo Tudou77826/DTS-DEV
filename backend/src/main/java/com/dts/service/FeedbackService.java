@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 站内反馈：用户提交，项目负责人（或管理员）查看与处理。 */
+/** 使用反馈：用户提交，项目负责人（或管理员）查看与处理。 */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -41,7 +41,7 @@ public class FeedbackService {
         feedbackMapper.insert(feedback);
         // 通知项目负责人（LEADER）有新反馈
         List<Long> leaderIds = notificationService.leaderUserIds();
-        notificationService.notifyUsers(leaderIds, "FEEDBACK", "收到新的站内反馈",
+        notificationService.notifyUsers(leaderIds, "FEEDBACK", "收到新的使用反馈",
                 me.getDisplayName() + " 提交了一条反馈", "/feedback");
         return feedback;
     }

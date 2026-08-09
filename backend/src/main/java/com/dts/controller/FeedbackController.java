@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** 站内反馈收集。 */
+/** 使用反馈收集。 */
 @RestController
 @RequestMapping("/feedback")
 @RequiredArgsConstructor
