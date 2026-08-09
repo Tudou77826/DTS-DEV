@@ -11,7 +11,7 @@ import { formatDateTime } from "@/lib/labels"
 import { cn } from "@/lib/utils"
 import type { Notification } from "@/lib/types"
 
-export function NotificationCenter() {
+export function NotificationCenter({ collapsed = false }: { collapsed?: boolean }) {
   const navigate = useNavigate()
   const [items, setItems] = useState<Notification[]>([])
   const [count, setCount] = useState(0)
@@ -49,11 +49,11 @@ export function NotificationCenter() {
   return (
     <DropdownMenu onOpenChange={(openState) => openState && loadItems()}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative w-full justify-start gap-2">
-          <Bell className="size-4" />
-          站内通知
+        <Button variant="ghost" size="sm" className={cn("relative w-full justify-start gap-2", collapsed && "justify-center px-0")} title={collapsed ? "站内通知" : undefined}>
+          <Bell className="size-4 shrink-0" />
+          {!collapsed && "站内通知"}
           {count > 0 && (
-            <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+            <span className={cn("flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground", !collapsed && "ml-auto")}>
               {count > 99 ? "99+" : count}
             </span>
           )}
