@@ -32,7 +32,6 @@ dts:
       label: 项目负责人
       color: null
     admin:
-      # 共享管理员密码（BCrypt 哈希）。初始密码为 123456，部署后请立即修改。
       password-hash: $2a$10$hZ/dRKj.bsmx3BzX4sG2c.bJtxAluJkWF6C3dHvuwMzzZRJJ0ox/q
     issue:
       code:
@@ -115,7 +114,7 @@ dts:
           placeholder: null
           required: false
           visible: true
-        subModule:
+        sub-module:
           label: 子模块
           placeholder: 选择子模块（可选）
           required: false
@@ -183,11 +182,16 @@ dts:
       - 日志审计
       - 策略下发
       products:
+      - HiSec
+      - SecoSpace
       - 态势感知
       - 边界安全
       - 日志审计平台
       versions:
+      - V500R020C00
       - V500R020C10
+      - V500R021C00
+      - V200R001C00
       - V500R020C20
       - V600R001C00
       sub-modules:
@@ -197,15 +201,15 @@ dts:
       - 策略下发
       domains:
       - name: 功能缺陷
-        description: null
+        description: ''
       - name: 性能问题
-        description: null
+        description: ''
       - name: 兼容性
-        description: null
+        description: ''
       - name: 配置问题
-        description: null
+        description: ''
       - name: 安全漏洞
-        description: null
+        description: ''
     features:
       attachments: true
       relations: true

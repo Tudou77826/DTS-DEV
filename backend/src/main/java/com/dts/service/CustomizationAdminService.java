@@ -37,6 +37,7 @@ public class CustomizationAdminService {
             "loginSubtitle", "primaryColor", "showDemoAccounts", "demoAccountHint", "defaultPriority",
             "datePattern", "sequenceDigits", "masterData", "syncMode",
             "employeeNo", "displayName", "avatarColor", "passwordHash",
+            "subModule", "subModules",
             "batchOperations", "excelExport", "richText");
 
     @Value("${app.customization.external-file:./config/dts-customization.yml}")
@@ -96,6 +97,38 @@ public class CustomizationAdminService {
 
     public ConfigFileView saveStructured(DtsCustomizationProperties customization) {
         if (customization == null) throw new BusinessException("接入配置不能为空");
+        // 主数据（产品/版本/模块/子模块/问题领域）只由“即时生效”写回路径维护：
+        // 结构化表单保存时保留 YAML 中当前的主数据，避免用表单的旧快照覆盖写回后的结果。
+        try {
+            DtsCustomizationProperties current = parseStructured(read().getContent());
+            if (current.getMasterData() != null) {
+                customization.setMasterData(current.getMasterData());
+            }
+        } catch (RuntimeException ignored) {
+            // 当前文件解析失败时按表单内容保存，由后续校验兜底
+        }
+        return writeStructured(customization);
+    }
+
+    /**
+     * 主数据（字典）即时编辑后的写回入口：只替换接入配置中的 master-data 字典列表，
+     * 其余节点（品牌、问题模型、组织人员、管理员哈希等）原样保留。
+     * 这样字典改动立即生效，且重启后仍与接入配置保持一致。
+     */
+    public ConfigFileView updateMasterData(MasterDataPatch patch) {
+        if (patch == null) throw new BusinessException("主数据不能为空");
+        DtsCustomizationProperties config = parseStructured(read().getContent());
+        DtsCustomizationProperties.MasterData master = config.getMasterData();
+        if (patch.getProducts() != null) master.setProducts(patch.getProducts());
+        if (patch.getVersions() != null) master.setVersions(patch.getVersions());
+        if (patch.getModules() != null) master.setModules(patch.getModules());
+        if (patch.getSubModules() != null) master.setSubModules(patch.getSubModules());
+        if (patch.getDomains() != null) master.setDomains(patch.getDomains());
+        return writeStructured(config);
+    }
+
+    /** 把结构化配置对象序列化为 kebab-case YAML 并写入外部配置文件。 */
+    private ConfigFileView writeStructured(DtsCustomizationProperties customization) {
         Map<String, Object> customizationMap = objectMapper.convertValue(customization, LinkedHashMap.class);
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("dts", Map.of("customization", toKebabKeys(customizationMap)));
@@ -116,9 +149,10 @@ public class CustomizationAdminService {
         try {
             Files.createDirectories(target.getParent());
             if (Files.isRegularFile(target)) {
-                String suffix = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+                // 备份名带毫秒，避免同一秒内连续保存时覆盖冲突
+                String suffix = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
                 Files.copy(target, target.resolveSibling(target.getFileName() + ".bak-" + suffix),
-                        StandardCopyOption.COPY_ATTRIBUTES);
+                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             }
             Path temp = Files.createTempFile(target.getParent(), "dts-customization-", ".tmp");
             Files.writeString(temp, normalizeLineEndings(content), StandardCharsets.UTF_8);
@@ -375,6 +409,16 @@ public class CustomizationAdminService {
         private String externalPath;
         private String lastModified;
         private boolean restartRequired;
+    }
+
+    /** 主数据写回补丁：只覆盖非空字段对应的字典列表。 */
+    @Data
+    public static class MasterDataPatch {
+        private List<String> products;
+        private List<String> versions;
+        private List<String> modules;
+        private List<String> subModules;
+        private List<DtsCustomizationProperties.DomainOption> domains;
     }
 
     @Data

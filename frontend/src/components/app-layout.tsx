@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import {
   LayoutDashboard, ListChecks, Inbox, ClipboardList,
-  BarChart3, Settings, LogOut, Moon, Sun, Plus, MessageSquareText, ShieldCheck,
+  BarChart3, LogOut, Moon, Sun, Plus, MessageSquareText, ShieldCheck,
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
@@ -35,7 +35,6 @@ const NAV_MAIN: NavItem[] = [
 
 const NAV_OTHER: NavItem[] = [
   { to: "/stats", label: "统计看板", icon: BarChart3 },
-  { to: "/config", label: "基础配置", icon: Settings },
   { to: "/feedback", label: "使用反馈", icon: MessageSquareText },
 ]
 

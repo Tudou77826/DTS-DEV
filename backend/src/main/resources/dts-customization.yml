@@ -171,8 +171,8 @@ dts:
           avatar-color: "#ec4899"
           active: true
       modules: [入侵检测, 流量清洗, 日志审计, 策略下发]
-      products: [态势感知, 边界安全, 日志审计平台]
-      versions: [V500R020C10, V500R020C20, V600R001C00]
+      products: [HiSec, SecoSpace, 态势感知, 边界安全, 日志审计平台]
+      versions: [V500R020C00, V500R020C10, V500R021C00, V200R001C00, V500R020C20, V600R001C00]
       sub-modules: [入侵检测, 流量清洗, 日志审计, 策略下发]
       domains:
         - name: 功能缺陷

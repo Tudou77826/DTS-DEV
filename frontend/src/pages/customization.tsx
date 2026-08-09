@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle, Boxes, Check, FileCode2, KeyRound, Layers3, Loader2, Palette,
-  FileUp, Plus, RefreshCw, Save, Settings2, ShieldCheck, Trash2, UsersRound, Workflow,
+  FileUp, Plus, RefreshCw, Save, Settings2, ShieldCheck, Trash2, UsersRound, Workflow, Zap,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageBody, PageHeader } from "@/components/app-layout"
+import { ConfigPage } from "@/pages/config"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -198,7 +199,7 @@ export function CustomizationPage({ embedded = false }: { embedded?: boolean } =
               <TabsTrigger value="issue"><Settings2 /> 问题模型</TabsTrigger>
               <TabsTrigger value="workflow"><Workflow /> 流程配置</TabsTrigger>
               <TabsTrigger value="organization"><UsersRound /> 组织与人员</TabsTrigger>
-              <TabsTrigger value="master"><Boxes /> 主数据</TabsTrigger>
+              <TabsTrigger value="master"><Boxes /> 主数据<span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">即时</span></TabsTrigger>
               <TabsTrigger value="features"><Layers3 /> 功能开关</TabsTrigger>
               <TabsTrigger value="advanced"><FileCode2 /> 高级模式</TabsTrigger>
             </TabsList>
@@ -216,7 +217,7 @@ export function CustomizationPage({ embedded = false }: { embedded?: boolean } =
               <OrganizationPanel value={draft} onChange={setDraft} />
             </TabsContent>
             <TabsContent value="master" className="mt-4 space-y-4">
-              <MasterDataPanel value={draft} onChange={setDraft} />
+              <MasterDataPanel />
             </TabsContent>
             <TabsContent value="features" className="mt-4">
               <FeaturesPanel value={draft} onChange={setDraft} />
@@ -584,54 +585,22 @@ function CsvUserImport({ value, onImport }: {
   )
 }
 
-function MasterDataPanel({ value, onChange }: EditorProps) {
-  const master = value.masterData
-  const setMaster = (next: DtsCustomization["masterData"]) => onChange({ ...value, masterData: next })
+function MasterDataPanel() {
   return (
-    <>
-      <Section title="模块" description="产品和版本由问题填写者直接输入；这里只维护需要统一口径的模块。">
-        <div className="flex flex-wrap gap-2">
-          {master.modules.map((module, index) => (
-            <div key={`${module}-${index}`} className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-              <Input className="h-8 w-44 border-0 shadow-none" value={module} onChange={(event) => {
-                const modules = [...master.modules]
-                modules[index] = event.target.value
-                setMaster({ ...master, modules })
-              }} />
-              <Button variant="ghost" size="icon-sm" onClick={() =>
-                setMaster({ ...master, modules: master.modules.filter((_, i) => i !== index) })}>
-                <Trash2 className="size-3.5 text-muted-foreground" />
-              </Button>
-            </div>
-          ))}
-          <Button variant="outline" size="sm" className="h-10" onClick={() =>
-            setMaster({ ...master, modules: [...master.modules, "新模块"] })}>
-            <Plus className="size-4" /> 添加模块
-          </Button>
+    <div className="space-y-4">
+      <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-100">
+        <Zap className="mt-0.5 size-4 shrink-0" />
+        <div>
+          <div className="font-medium">主数据即时生效</div>
+          <p className="mt-1 text-xs opacity-80">
+            这里维护产品、版本、模块、子模块与问题领域下拉字典，改动立即生效，无需重启；
+            同时会写回 <code className="rounded bg-emerald-100 px-1 dark:bg-emerald-900/60">dts-customization.yml</code>，重启后保持一致。
+            组织与人员由接入配置同步，不在此维护。
+          </p>
         </div>
-      </Section>
-      <Section title="问题领域" description="维护团队使用的问题分类。">
-        <div className="flex flex-wrap gap-2">
-          {master.domains.map((domain, index) => (
-            <div key={`${domain.name}-${index}`} className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-              <Input className="h-8 w-40 border-0 shadow-none" value={domain.name} onChange={(e) => {
-                const domains = [...master.domains]
-                domains[index] = { ...domain, name: e.target.value }
-                setMaster({ ...master, domains })
-              }} />
-              <Button variant="ghost" size="icon-sm" onClick={() =>
-                setMaster({ ...master, domains: master.domains.filter((_, i) => i !== index) })}>
-                <Trash2 className="size-3.5 text-muted-foreground" />
-              </Button>
-            </div>
-          ))}
-          <Button variant="outline" size="sm" className="h-10" onClick={() =>
-            setMaster({ ...master, domains: [...master.domains, { name: "新领域" }] })}>
-            <Plus className="size-4" /> 添加领域
-          </Button>
-        </div>
-      </Section>
-    </>
+      </div>
+      <ConfigPage embedded />
+    </div>
   )
 }
 

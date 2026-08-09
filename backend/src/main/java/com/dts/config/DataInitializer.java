@@ -2,6 +2,7 @@ package com.dts.config;
 
 import com.dts.domain.*;
 import com.dts.mapper.*;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -10,11 +11,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
  * 启动时把接入配置中的组织、人员和业务主数据同步到运行库。
+ *
+ * <p>同步口径：组织（团队/人员）以接入配置为权威来源按稳定 key 合并；
+ * 业务主数据（产品/版本/模块/子模块/问题领域）为“重启覆盖”——接入配置中缺失的字典会被停用，
+ * 因为管理员页面即时编辑时会写回接入配置，两份数据始终一致。</p>
  */
 @Slf4j
 @Component
@@ -46,13 +52,14 @@ public class DataInitializer implements CommandLineRunner {
      */
     private void syncOrganization() {
         // 先同步子模块字典（用户归属引用子模块名称），并按同名模块挂载所属模块
+        List<String> subModuleNames = customization.getMasterData().getSubModules();
         Map<String, Long> subModuleIds = new LinkedHashMap<>();
-        for (String name : customization.getMasterData().getSubModules()) {
-            SubModule existing = subModuleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+        for (String name : subModuleNames) {
+            SubModule existing = subModuleMapper.selectOne(Wrappers
                     .<SubModule>lambdaQuery()
                     .eq(SubModule::getName, name).last("LIMIT 1"));
             // 同名模块（子模块确定后所属模块随之确定）
-            ProductModule module = moduleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+            ProductModule module = moduleMapper.selectOne(Wrappers
                     .<ProductModule>lambdaQuery()
                     .eq(ProductModule::getName, name)
                     .eq(ProductModule::getActive, true).last("LIMIT 1"));
@@ -60,16 +67,30 @@ public class DataInitializer implements CommandLineRunner {
             if (existing == null) {
                 existing = insert(subModuleMapper, SubModule.builder()
                         .name(name).moduleId(moduleId).active(true).build());
-            } else if (moduleId != null && !java.util.Objects.equals(existing.getModuleId(), moduleId)) {
-                existing.setModuleId(moduleId);
-                subModuleMapper.updateById(existing);
+            } else {
+                boolean changed = !Boolean.TRUE.equals(existing.getActive());
+                if (moduleId != null && !java.util.Objects.equals(existing.getModuleId(), moduleId)) {
+                    existing.setModuleId(moduleId);
+                    changed = true;
+                }
+                if (changed) {
+                    existing.setActive(true);
+                    subModuleMapper.updateById(existing);
+                }
             }
             subModuleIds.put(name, existing.getId());
+        }
+        // 重启覆盖：接入配置中不存在的子模块停用（保留历史问题归属，不再出现在下拉中）
+        if (!subModuleNames.isEmpty()) {
+            subModuleMapper.update(null, Wrappers.<SubModule>lambdaUpdate()
+                    .set(SubModule::getActive, false)
+                    .eq(SubModule::getActive, true)
+                    .notIn(SubModule::getName, subModuleNames));
         }
 
         Map<String, Long> teamIds = new LinkedHashMap<>();
         for (DtsCustomizationProperties.TeamOption configured : customization.getMasterData().getTeams()) {
-            Team team = teamMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<Team>lambdaQuery()
+            Team team = teamMapper.selectOne(Wrappers.<Team>lambdaQuery()
                     .eq(Team::getName, configured.getName()).last("LIMIT 1"));
             if (team == null) {
                 team = insert(teamMapper, Team.builder()
@@ -93,7 +114,7 @@ public class DataInitializer implements CommandLineRunner {
                         configured.getUsername(), configured.getRole());
                 continue;
             }
-            User user = userMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<User>lambdaQuery()
+            User user = userMapper.selectOne(Wrappers.<User>lambdaQuery()
                     .eq(User::getUsername, configured.getUsername()).last("LIMIT 1"));
             boolean isNew = user == null;
             if (isNew) {
@@ -121,46 +142,93 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     /**
-     * 以“合并”方式加载表单配置：配置文件可新增或更新默认字典，
-     * 不删除管理员在页面中维护的其他数据。
+     * 业务主数据（产品/版本/模块/问题领域）以接入配置为权威来源，重启覆盖：
+     * 接入配置中存在的字典确保启用，缺失的字典停用。
+     * 管理员页面即时编辑字典时会写回接入配置，因此两份数据始终一致。
      */
     private void syncIssueFormOptions() {
-        for (String moduleName : customization.getMasterData().getModules()) {
-            if (moduleMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                    .<ProductModule>lambdaQuery()
-                    .eq(ProductModule::getName, moduleName)) == 0) {
-                insert(moduleMapper, ProductModule.builder()
-                        .name(moduleName).active(true).build());
+        List<String> moduleNames = customization.getMasterData().getModules();
+        for (String moduleName : moduleNames) {
+            ProductModule module = moduleMapper.selectOne(Wrappers.<ProductModule>lambdaQuery()
+                    .eq(ProductModule::getName, moduleName).last("LIMIT 1"));
+            if (module == null) {
+                insert(moduleMapper, ProductModule.builder().name(moduleName).active(true).build());
+            } else if (!Boolean.TRUE.equals(module.getActive())) {
+                module.setActive(true);
+                moduleMapper.updateById(module);
             }
         }
-        for (String productName : customization.getMasterData().getProducts()) {
-            if (productMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                    .<Product>lambdaQuery()
-                    .eq(Product::getName, productName)) == 0) {
-                insert(productMapper, Product.builder()
-                        .name(productName).active(true).build());
+        if (!moduleNames.isEmpty()) {
+            moduleMapper.update(null, Wrappers.<ProductModule>lambdaUpdate()
+                    .set(ProductModule::getActive, false)
+                    .eq(ProductModule::getActive, true)
+                    .notIn(ProductModule::getName, moduleNames));
+        }
+
+        List<String> productNames = customization.getMasterData().getProducts();
+        for (String productName : productNames) {
+            Product product = productMapper.selectOne(Wrappers.<Product>lambdaQuery()
+                    .eq(Product::getName, productName).last("LIMIT 1"));
+            if (product == null) {
+                insert(productMapper, Product.builder().name(productName).active(true).build());
+            } else if (!Boolean.TRUE.equals(product.getActive())) {
+                product.setActive(true);
+                productMapper.updateById(product);
             }
         }
-        for (String version : customization.getMasterData().getVersions()) {
-            if (versionMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                    .<ProductVersion>lambdaQuery()
-                    .eq(ProductVersion::getVersion, version)) == 0) {
-                insert(versionMapper, ProductVersion.builder()
-                        .version(version).active(true).build());
+        if (!productNames.isEmpty()) {
+            productMapper.update(null, Wrappers.<Product>lambdaUpdate()
+                    .set(Product::getActive, false)
+                    .eq(Product::getActive, true)
+                    .notIn(Product::getName, productNames));
+        }
+
+        List<String> versionList = customization.getMasterData().getVersions();
+        for (String version : versionList) {
+            ProductVersion existing = versionMapper.selectOne(Wrappers.<ProductVersion>lambdaQuery()
+                    .eq(ProductVersion::getVersion, version).last("LIMIT 1"));
+            if (existing == null) {
+                insert(versionMapper, ProductVersion.builder().version(version).active(true).build());
+            } else if (!Boolean.TRUE.equals(existing.getActive())) {
+                existing.setActive(true);
+                versionMapper.updateById(existing);
             }
         }
+        if (!versionList.isEmpty()) {
+            versionMapper.update(null, Wrappers.<ProductVersion>lambdaUpdate()
+                    .set(ProductVersion::getActive, false)
+                    .eq(ProductVersion::getActive, true)
+                    .notIn(ProductVersion::getVersion, versionList));
+        }
+
+        List<String> domainNames = customization.getMasterData().getDomains().stream()
+                .map(DtsCustomizationProperties.DomainOption::getName).toList();
         for (DtsCustomizationProperties.DomainOption configured : customization.getMasterData().getDomains()) {
-            IssueDomain domain = domainMapper.selectOne(
-                    com.baomidou.mybatisplus.core.toolkit.Wrappers.<IssueDomain>lambdaQuery()
-                            .eq(IssueDomain::getName, configured.getName()).last("LIMIT 1"));
+            IssueDomain domain = domainMapper.selectOne(Wrappers.<IssueDomain>lambdaQuery()
+                    .eq(IssueDomain::getName, configured.getName()).last("LIMIT 1"));
             if (domain == null) {
                 insert(domainMapper, IssueDomain.builder()
-                        .name(configured.getName()).description(configured.getDescription()).build());
-            } else if (!java.util.Objects.equals(domain.getDescription(), configured.getDescription())) {
-                domain.setDescription(configured.getDescription());
-                domainMapper.updateById(domain);
+                        .name(configured.getName()).description(configured.getDescription()).active(true).build());
+            } else {
+                boolean changed = !Boolean.TRUE.equals(domain.getActive());
+                if (configured.getDescription() != null
+                        && !java.util.Objects.equals(domain.getDescription(), configured.getDescription())) {
+                    domain.setDescription(configured.getDescription());
+                    changed = true;
+                }
+                if (changed) {
+                    domain.setActive(true);
+                    domainMapper.updateById(domain);
+                }
             }
         }
+        if (!domainNames.isEmpty()) {
+            domainMapper.update(null, Wrappers.<IssueDomain>lambdaUpdate()
+                    .set(IssueDomain::getActive, false)
+                    .eq(IssueDomain::getActive, true)
+                    .notIn(IssueDomain::getName, domainNames));
+        }
+
         log.info("已加载接入配置 {}，主数据同步模式: {}",
                 customization.getProfile().getId(), customization.getMasterData().getSyncMode());
     }

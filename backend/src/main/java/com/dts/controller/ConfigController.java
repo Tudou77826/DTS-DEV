@@ -97,11 +97,13 @@ public class ConfigController {
     }
 
     @PostMapping("/products")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Product> saveProduct(@RequestBody Product p) {
         return ApiResponse.ok(configService.saveProduct(p));
     }
 
     @DeleteMapping("/products/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteProduct(@PathVariable Long id) {
         configService.deleteProduct(id);
         return ApiResponse.ok();
@@ -114,11 +116,13 @@ public class ConfigController {
     }
 
     @PostMapping("/modules")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<ProductModule> saveModule(@RequestBody ProductModule m) {
         return ApiResponse.ok(configService.saveModule(m));
     }
 
     @DeleteMapping("/modules/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteModule(@PathVariable Long id) {
         configService.deleteModule(id);
         return ApiResponse.ok();
@@ -131,11 +135,13 @@ public class ConfigController {
     }
 
     @PostMapping("/versions")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<ProductVersion> saveVersion(@RequestBody ProductVersion v) {
         return ApiResponse.ok(configService.saveVersion(v));
     }
 
     @DeleteMapping("/versions/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteVersion(@PathVariable Long id) {
         configService.deleteVersion(id);
         return ApiResponse.ok();
@@ -148,11 +154,13 @@ public class ConfigController {
     }
 
     @PostMapping("/sub-modules")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<SubModule> saveSubModule(@RequestBody SubModule m) {
         return ApiResponse.ok(configService.saveSubModule(m));
     }
 
     @DeleteMapping("/sub-modules/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteSubModule(@PathVariable Long id) {
         configService.deleteSubModule(id);
         return ApiResponse.ok();
@@ -165,31 +173,22 @@ public class ConfigController {
     }
 
     @PostMapping("/domains")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<IssueDomain> saveDomain(@RequestBody IssueDomain d) {
         return ApiResponse.ok(configService.saveDomain(d));
     }
 
     @DeleteMapping("/domains/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteDomain(@PathVariable Long id) {
         configService.deleteDomain(id);
         return ApiResponse.ok();
     }
 
-    // ─── 团队 ───
+    // ─── 团队（以接入配置为来源，仅提供读取） ───
     @GetMapping("/teams")
     public ApiResponse<List<Team>> teams() {
         return ApiResponse.ok(configService.listTeams());
-    }
-
-    @PostMapping("/teams")
-    public ApiResponse<Team> saveTeam(@RequestBody Team t) {
-        return ApiResponse.ok(configService.saveTeam(t));
-    }
-
-    @DeleteMapping("/teams/{id}")
-    public ApiResponse<Void> deleteTeam(@PathVariable Long id) {
-        configService.deleteTeam(id);
-        return ApiResponse.ok();
     }
 
     @Data
