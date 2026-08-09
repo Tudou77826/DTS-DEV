@@ -42,7 +42,7 @@ export interface AdminVerifyResult {
 export interface Product { id: number; name: string; description?: string; active?: boolean }
 export interface ProductVersion { id: number; productId?: number; version: string; description?: string; active?: boolean }
 export interface ProductModule { id: number; productId?: number; name: string; description?: string; active?: boolean }
-export interface SubModule { id: number; name: string; description?: string; active?: boolean }
+export interface SubModule { id: number; name: string; moduleId?: number; description?: string; active?: boolean }
 export interface IssueDomain { id: number; name: string; description?: string }
 export interface Team { id: number; name: string; description?: string }
 

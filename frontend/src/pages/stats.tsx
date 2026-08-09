@@ -23,6 +23,7 @@ const STATUS_ORDER: IssueStatus[] = ["PENDING_ASSIGN", "PENDING_HANDLE", "PROCES
 
 export function StatsPage() {
   const [dict, setDict] = useState<Dictionaries | null>(null)
+  const [moduleId, setModuleId] = useState("")
   const [subModuleId, setSubModuleId] = useState("")
   const [ov, setOv] = useState<Overview | null>(null)
 
@@ -32,10 +33,26 @@ export function StatsPage() {
 
   useEffect(() => {
     const params = new URLSearchParams()
+    if (moduleId) params.set("moduleId", moduleId)
     if (subModuleId) params.set("subModuleId", subModuleId)
     const qs = params.toString()
     api.get<Overview>(`/stats/overview${qs ? `?${qs}` : ""}`).then(setOv)
-  }, [subModuleId])
+  }, [moduleId, subModuleId])
+
+  // 子模块确定后，所属模块自动带出
+  const selectedSub = subModuleId
+    ? (dict?.subModules.find((s) => String(s.id) === subModuleId) ?? null)
+    : null
+  const effectiveModuleId = moduleId || (selectedSub?.moduleId ? String(selectedSub.moduleId) : "")
+
+  const selectSubModule = (value: string) => {
+    setSubModuleId(value)
+    const sub = value ? (dict?.subModules.find((s) => String(s.id) === value) ?? null) : null
+    // 选了子模块则同步其所属模块；清空子模块时若模块是自动带出的也清空
+    if (sub?.moduleId) setModuleId(String(sub.moduleId))
+    else if (!value && !moduleId) { /* 保持 */ }
+    else if (!value) setModuleId("")
+  }
 
   if (!ov) return <PageBody><div className="text-sm text-muted-foreground">加载中…</div></PageBody>
 
@@ -55,10 +72,17 @@ export function StatsPage() {
     <>
       <PageHeader title="统计看板" subtitle="问题基础统计与团队负载" />
       <PageBody className="space-y-4">
-        {/* 筛选：子模块（子模块已隐含所属模块） */}
+        {/* 筛选：模块 + 子模块（子模块确定后所属模块自动带出） */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">子模块</span>
-          <Select value={subModuleId} onValueChange={setSubModuleId}>
+          <span className="text-xs text-muted-foreground">范围</span>
+          <Select value={effectiveModuleId} onValueChange={(v) => { setModuleId(v); setSubModuleId("") }}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="全部模块" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部模块</SelectItem>
+              {dict?.modules.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={subModuleId} onValueChange={selectSubModule}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="全部子模块" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="">全部子模块</SelectItem>

@@ -60,6 +60,15 @@ export function IssueListPage() {
   /** 子模块：""=自动（按当前用户归属子模块），0=全部，>0=指定 */
   const subModuleFilter = searchParams.get("subModuleId") ?? ""
 
+  // 当前生效子模块（自动 = 用户归属）；选定了具体子模块则所属模块随之带出
+  const effectiveSubId = subModuleFilter === ""
+    ? (user?.subModuleId ? String(user.subModuleId) : "")
+    : subModuleFilter
+  const selectedSub = effectiveSubId && effectiveSubId !== "0"
+    ? (dict?.subModules.find((s) => String(s.id) === effectiveSubId) ?? null)
+    : null
+  const effectiveModuleId = moduleId || (selectedSub?.moduleId ? String(selectedSub.moduleId) : "")
+
   const update = useCallback((patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams)
     Object.entries(patch).forEach(([k, v]) => {
@@ -76,7 +85,7 @@ export function IssueListPage() {
       const params = new URLSearchParams({ page: String(page), size: String(size) })
       if (keyword) params.set("keyword", keyword)
       if (status) params.set("status", status)
-      if (moduleId) params.set("moduleId", moduleId)
+      if (effectiveModuleId) params.set("moduleId", effectiveModuleId)
       if (productName) params.set("productName", productName)
       if (assigneeId) params.set("assigneeId", assigneeId)
       if (foundVersionName) params.set("foundVersionName", foundVersionName)
@@ -92,7 +101,7 @@ export function IssueListPage() {
     } finally {
       setLoading(false)
     }
-  }, [keyword, status, moduleId, productName, assigneeId, foundVersionName,
+  }, [keyword, status, effectiveModuleId, productName, assigneeId, foundVersionName,
     domainId, submitterId, createdFrom, createdTo, page, size, overdueOnly, subModuleFilter])
 
   useEffect(() => { api.get<Dictionaries>("/config/dictionaries").then(setDict) }, [])
@@ -104,7 +113,7 @@ export function IssueListPage() {
     const params = new URLSearchParams()
     if (keyword) params.set("keyword", keyword)
     if (status) params.set("status", status)
-    if (moduleId) params.set("moduleId", moduleId)
+    if (effectiveModuleId) params.set("moduleId", effectiveModuleId)
     if (productName) params.set("productName", productName)
     if (assigneeId) params.set("assigneeId", assigneeId)
     if (foundVersionName) params.set("foundVersionName", foundVersionName)
@@ -184,7 +193,8 @@ export function IssueListPage() {
                 placeholder="产品名称"
               />
             </div>
-            <Select value={moduleId} onValueChange={(v) => update({ moduleId: v === "ALL" ? "" : v, page: null })}>
+            <Select value={effectiveModuleId || "ALL"}
+              onValueChange={(v) => update({ moduleId: v === "ALL" ? "" : v, subModuleId: "", page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="模块" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部模块</SelectItem>
@@ -193,7 +203,7 @@ export function IssueListPage() {
             </Select>
             {/* 子模块：默认显示当前用户归属的具体子模块名；未指定归属时默认全部 */}
             <Select value={subModuleFilter === "" ? (user?.subModuleId ? String(user.subModuleId) : "0") : subModuleFilter}
-              onValueChange={(v) => update({ subModuleId: v === "0" ? "" : v, page: null })}>
+              onValueChange={(v) => update({ subModuleId: v === "0" ? "" : v, moduleId: "", page: null })}>
               <SelectTrigger className="w-[130px]"><SelectValue placeholder="子模块" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">全部子模块</SelectItem>

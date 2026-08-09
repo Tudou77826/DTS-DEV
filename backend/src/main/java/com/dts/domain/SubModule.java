@@ -18,6 +18,9 @@ public class SubModule extends BaseEntity {
 
     private String name;
 
+    /** 所属模块 ID（子模块确定后所属模块随之确定） */
+    private Long moduleId;
+
     @lombok.Builder.Default
     private Boolean active = true;
 }

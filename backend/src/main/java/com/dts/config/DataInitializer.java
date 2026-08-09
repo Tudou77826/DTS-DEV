@@ -45,14 +45,24 @@ public class DataInitializer implements CommandLineRunner {
      * 已有账号的密码不会被配置同步覆盖。
      */
     private void syncOrganization() {
-        // 先同步子模块字典（用户归属引用子模块名称）
+        // 先同步子模块字典（用户归属引用子模块名称），并按同名模块挂载所属模块
         Map<String, Long> subModuleIds = new LinkedHashMap<>();
         for (String name : customization.getMasterData().getSubModules()) {
             SubModule existing = subModuleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
                     .<SubModule>lambdaQuery()
                     .eq(SubModule::getName, name).last("LIMIT 1"));
+            // 同名模块（子模块确定后所属模块随之确定）
+            ProductModule module = moduleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ProductModule>lambdaQuery()
+                    .eq(ProductModule::getName, name)
+                    .eq(ProductModule::getActive, true).last("LIMIT 1"));
+            Long moduleId = module == null ? null : module.getId();
             if (existing == null) {
-                existing = insert(subModuleMapper, SubModule.builder().name(name).active(true).build());
+                existing = insert(subModuleMapper, SubModule.builder()
+                        .name(name).moduleId(moduleId).active(true).build());
+            } else if (moduleId != null && !java.util.Objects.equals(existing.getModuleId(), moduleId)) {
+                existing.setModuleId(moduleId);
+                subModuleMapper.updateById(existing);
             }
             subModuleIds.put(name, existing.getId());
         }
