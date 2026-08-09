@@ -15,7 +15,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        // E2E 用独立后端端口（VITE_API_TARGET），避免与本地开发后端冲突
+        target: process.env.VITE_API_TARGET || "http://localhost:8080",
         changeOrigin: true,
       },
     },
