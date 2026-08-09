@@ -38,10 +38,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!isFormData) headers["Content-Type"] = "application/json"
   if (token) headers["Authorization"] = `Bearer ${token}`
 
-  // 管理员令牌：存在则附加到接入定制相关的管理请求
+  // 管理员令牌：存在则附加到管理相关请求（接入定制、基础配置、使用反馈处理）
   const adminToken = localStorage.getItem(ADMIN_TOKEN_KEY)
   const isAdminPath = path.includes("/customization/admin")
-  if (adminToken && (isAdminPath || path.startsWith("/config"))) {
+      || path.startsWith("/config")
+      || path.startsWith("/feedback")
+  if (adminToken && isAdminPath) {
     headers[ADMIN_TOKEN_HEADER] = adminToken
   }
 

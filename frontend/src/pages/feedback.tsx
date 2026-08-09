@@ -5,19 +5,14 @@ import { PageHeader, PageBody } from "@/components/app-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { formatDateTime } from "@/lib/labels"
 import type { Feedback } from "@/lib/types"
-import { useAuth } from "@/store/auth"
 import { toast } from "sonner"
 
 export function FeedbackPage() {
-  const { user } = useAuth()
-  const isLeader = user?.role === "LEADER"
   const [mine, setMine] = useState<Feedback[]>([])
-  const [all, setAll] = useState<Feedback[] | null>(null)
   const [content, setContent] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -25,18 +20,13 @@ export function FeedbackPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const [my, full] = await Promise.all([
-        api.get<Feedback[]>("/feedback/mine"),
-        isLeader ? api.get<Feedback[]>("/feedback").catch(() => []) : Promise.resolve([]),
-      ])
-      setMine(my)
-      setAll(isLeader ? full : null)
+      setMine(await api.get<Feedback[]>("/feedback/mine"))
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [isLeader])
+  useEffect(() => { load() }, [])
 
   const submit = async () => {
     if (!content.trim()) return toast.error("请填写反馈内容")
@@ -55,7 +45,7 @@ export function FeedbackPage() {
 
   return (
     <>
-      <PageHeader title="使用反馈" subtitle="反馈问题、改进建议或使用体验，项目负责人会及时处理" />
+      <PageHeader title="使用反馈" subtitle="反馈问题、改进建议或使用体验，管理员会及时处理" />
       <PageBody className="space-y-6">
         <Card>
           <CardContent className="space-y-4 p-5">
@@ -71,21 +61,6 @@ export function FeedbackPage() {
           </CardContent>
         </Card>
 
-        {isLeader && all && (
-          <Card>
-            <CardContent className="p-0">
-              <div className="border-b border-border px-5 py-3 text-sm font-semibold">全部反馈（{all.length}）</div>
-              {all.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-muted-foreground">暂无反馈</div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {all.map((item) => <FeedbackItem key={item.id} item={item} onProcessed={load} />)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         <Card>
           <CardContent className="p-0">
             <div className="border-b border-border px-5 py-3 text-sm font-semibold">我提交的反馈（{mine.length}）</div>
@@ -97,7 +72,7 @@ export function FeedbackPage() {
               <div className="px-5 py-8 text-center text-sm text-muted-foreground">暂无反馈</div>
             ) : (
               <div className="divide-y divide-border">
-                {mine.map((item) => <FeedbackItem key={item.id} item={item} onProcessed={load} />)}
+                {mine.map((item) => <FeedbackItem key={item.id} item={item} />)}
               </div>
             )}
           </CardContent>
@@ -107,29 +82,10 @@ export function FeedbackPage() {
   )
 }
 
-function FeedbackItem({ item, onProcessed }: { item: Feedback; onProcessed: () => void }) {
-  const { user } = useAuth()
-  const canProcess = (user?.role === "LEADER" || user?.id === item.handledBy) && item.status === "OPEN"
-  const [reply, setReply] = useState("")
-  const [saving, setSaving] = useState(false)
-
-  const process = async () => {
-    setSaving(true)
-    try {
-      await api.post(`/feedback/${item.id}/process`, { reply: reply.trim() || undefined })
-      toast.success("已处理")
-      onProcessed()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "处理失败")
-    } finally {
-      setSaving(false)
-    }
-  }
-
+function FeedbackItem({ item }: { item: Feedback }) {
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium">{item.userName || "用户"}</span>
         <span className="text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</span>
         <Badge variant={item.status === "OPEN" ? "destructive" : "secondary"} className="ml-auto">
           {item.status === "OPEN" ? "待处理" : "已处理"}
@@ -143,20 +99,6 @@ function FeedbackItem({ item, onProcessed }: { item: Feedback; onProcessed: () =
         <div className="mt-2 rounded-md bg-muted/50 px-3 py-2 text-sm">
           <span className="text-xs text-muted-foreground">处理回复（{item.handlerName || ""}）</span>
           <p className="mt-0.5 whitespace-pre-wrap">{item.reply}</p>
-        </div>
-      )}
-      {canProcess && (
-        <div className="mt-3 flex items-start gap-2">
-          <Textarea
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="填写处理回复…"
-            rows={2}
-            className="flex-1"
-          />
-          <Button size="sm" onClick={process} disabled={saving}>
-            {saving ? <Loader2 className="size-4 animate-spin" /> : "处理"}
-          </Button>
         </div>
       )}
     </div>

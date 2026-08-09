@@ -32,7 +32,8 @@ dts:
       label: 项目负责人
       color: null
     admin:
-      password-hash: $2a$10$iUw9X7Ll0/TJPXYI7TCXoeOmS3S5kJgu5K05WJecIT3HYI/eAIsdK
+      # 共享管理员密码（BCrypt 哈希）。初始密码为 123456，部署后请立即修改。
+      password-hash: $2a$10$hZ/dRKj.bsmx3BzX4sG2c.bJtxAluJkWF6C3dHvuwMzzZRJJ0ox/q
     issue:
       code:
         prefix: ISS

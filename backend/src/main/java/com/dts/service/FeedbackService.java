@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 使用反馈：用户提交，项目负责人（或管理员）查看与处理。 */
+/** 使用反馈：用户提交，管理员（共享密码门禁）查看与处理。 */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,10 +39,6 @@ public class FeedbackService {
                 .status(STATUS_OPEN)
                 .build();
         feedbackMapper.insert(feedback);
-        // 通知项目负责人（LEADER）有新反馈
-        List<Long> leaderIds = notificationService.leaderUserIds();
-        notificationService.notifyUsers(leaderIds, "FEEDBACK", "收到新的使用反馈",
-                me.getDisplayName() + " 提交了一条反馈", "/feedback");
         return feedback;
     }
 
@@ -82,8 +78,8 @@ public class FeedbackService {
     }
 
     private void requireHandler() {
-        if (!SecurityUtil.current().isLeader() && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(403, "仅项目负责人可查看/处理反馈");
+        if (!SecurityUtil.isAdmin()) {
+            throw new BusinessException(403, "仅管理员可查看/处理反馈");
         }
     }
 

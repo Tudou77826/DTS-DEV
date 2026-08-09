@@ -34,9 +34,9 @@ dts:
 
     # 接入定制管理入口的共享管理员密码（BCrypt 哈希）。
     # 系统不维护管理员账号；任何已登录用户输入该密码后获得短时管理权限。
-    # 默认密码为 admin123，生产部署后请立即通过定制页修改。
+    # 初始密码为 123456，生产部署后请立即通过管理员页面修改。
     admin:
-      password-hash: "$2b$10$sEFjSU70UXLEDRDQbbCp2eQdnGiSfTDb.L4gvmu6v2nDD8FkO09o6"
+      password-hash: "$2a$10$hZ/dRKj.bsmx3BzX4sG2c.bJtxAluJkWF6C3dHvuwMzzZRJJ0ox/q"
 
     issue:
       code:

@@ -43,7 +43,7 @@ interface ValidationResult {
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 
-export function CustomizationPage() {
+export function CustomizationPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { isAdminActive, verifyAdminPassword, logoutAdmin } = useAuth()
   const [unlocked, setUnlocked] = useState(isAdminActive())
   const [draft, setDraft] = useState<DtsCustomization | null>(null)
@@ -148,7 +148,7 @@ export function CustomizationPage() {
   if (loading || !draft) {
     return (
       <>
-        <PageHeader title="接入定制" subtitle="为团队配置一套可理解、可维护的系统行为" />
+        {!embedded && <PageHeader title="接入定制" subtitle="为团队配置一套可理解、可维护的系统行为" />}
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           <Loader2 className="mr-2 size-4 animate-spin" /> 正在加载配置…
         </div>
@@ -777,7 +777,7 @@ function AdminPasswordDialog() {
   )
 }
 
-function AdminGate({ onUnlock }: { onUnlock: (password: string) => void | Promise<void> }) {
+export function AdminGate({ onUnlock, title = "管理员页面" }: { onUnlock: (password: string) => void | Promise<void>; title?: string }) {
   const [password, setPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -797,7 +797,7 @@ function AdminGate({ onUnlock }: { onUnlock: (password: string) => void | Promis
 
   return (
     <>
-      <PageHeader title="接入定制" subtitle="需要管理员授权后进入" />
+      <PageHeader title={title} subtitle="需要管理员授权后进入" />
       <div className="flex flex-1 items-start justify-center bg-muted/20 px-4 pt-16">
         <Card className="w-full max-w-md">
           <CardHeader>
@@ -805,7 +805,7 @@ function AdminGate({ onUnlock }: { onUnlock: (password: string) => void | Promis
               <KeyRound className="size-4" /> 管理员授权
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              系统已接入统一认证，不维护管理员账号。请输入接入定制的共享管理员密码，验证通过后获得短时管理权限。
+              系统不维护管理员账号。请输入管理员密码（初始密码 123456），验证通过后获得短时管理权限。
             </p>
           </CardHeader>
           <CardContent>
