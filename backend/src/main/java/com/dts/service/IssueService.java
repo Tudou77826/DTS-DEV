@@ -157,6 +157,7 @@ public class IssueService {
     @Transactional(readOnly = true)
     public PageResult<IssueVo> page(IssueDtos.IssueQuery q) {
         applySubModuleScope(q);
+        applySubmitterScope(q);
         LambdaQueryWrapper<Issue> wrapper = buildQueryWrapper(q);
         IPage<Issue> result = issueMapper.selectPage(
                 new Page<>(Math.max(1, q.getPage()), normalizePageSize(q.getSize())), wrapper);
@@ -175,6 +176,21 @@ public class IssueService {
             }
         } else if (q.getSubModuleId() == 0L) {
             q.setSubModuleId(null);
+        }
+    }
+
+    /**
+     * 提出人（SUBMITTER）自动筛选：请求未显式指定时，只看自己提交的问题；
+     * submitterId=0 表示查看全部（提出人可横向对比）。
+     */
+    private void applySubmitterScope(IssueDtos.IssueQuery q) {
+        if (q.getSubmitterId() == null) {
+            LoginUser me = SecurityUtil.current();
+            if ("SUBMITTER".equals(me.getRole())) {
+                q.setSubmitterId(me.getId());
+            }
+        } else if (q.getSubmitterId() == 0L) {
+            q.setSubmitterId(null);
         }
     }
 

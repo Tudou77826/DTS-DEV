@@ -233,10 +233,12 @@ export function IssueListPage() {
             </div>
             <div className="w-[150px]">
               <SearchableSelect
-                value={submitterId}
-                onChange={(v) => update({ submitterId: v, page: null })}
+                value={submitterId === "" ? "auto" : submitterId}
+                onChange={(v) => update({ submitterId: v === "auto" ? "" : v, page: null })}
                 options={[
-                  { value: "", label: "全部提出人" },
+                  // 提出人默认只看自己提交的问题（自动）；"0" 表示全部
+                  { value: "auto", label: user?.role === "SUBMITTER" ? "我提交的问题" : "全部提出人" },
+                  ...(user?.role === "SUBMITTER" ? [{ value: "0", label: "全部提出人" }] : []),
                   ...(dict?.users || []).map((u) => ({ value: String(u.id), label: u.displayName })),
                 ]}
                 placeholder="提出人"
