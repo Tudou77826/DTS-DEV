@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:target/test-it/dts-it.db
+    driver-class-name: org.sqlite.JDBC
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 1
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration-sqlite
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+app:
+  customization:
+    # 集成测试写回隔离到 target 目录，不触碰仓库内的真实配置文件
+    external-file: target/test-it/dts-customization.yml
+  storage:
+    root: target/test-it/uploads
+  bootstrap:
+    default-user-password: ${DTS_BOOTSTRAP_DEFAULT_PASSWORD:123456}
+
+logging:
+  level:
+    com.dts: WARN

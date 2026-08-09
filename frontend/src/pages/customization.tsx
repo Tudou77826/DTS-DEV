@@ -124,7 +124,8 @@ export function CustomizationPage({ embedded = false }: { embedded?: boolean } =
     try {
       const result = await api.post<ValidationResult>("/config/customization/admin/validate", { content: yaml })
       setValidation(result)
-      result.valid ? toast.success("YAML 校验通过") : toast.error("YAML 存在错误")
+      if (result.valid) toast.success("YAML 校验通过")
+      else toast.error("YAML 存在错误")
       return result.valid
     } finally {
       setValidating(false)
@@ -911,7 +912,8 @@ function mergeCsvUsers(text: string, config: DtsCustomization) {
       active,
     }
     currentByUsername.set(username, next)
-    existing ? updated++ : created++
+    if (existing) updated++
+    else created++
   })
 
   const users = [...currentByUsername.values()]

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { UserCog, GitPullRequestArrow, UsersRound, X } from "lucide-react"
+import { UserCog, GitPullRequestArrow, X } from "lucide-react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import {

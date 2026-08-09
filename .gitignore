@@ -34,3 +34,7 @@ Thumbs.db
 
 # 本地工具（zcode 规划目录等）
 .zcode/
+
+# Playwright
+frontend/playwright-report/
+frontend/test-results/

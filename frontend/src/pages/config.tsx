@@ -39,7 +39,7 @@ export function ConfigPage({ embedded = false }: { embedded?: boolean } = {}) {
   )
 }
 
-function useSimpleList<T extends { id: number }>(path: string, label: string) {
+function useSimpleList<T extends { id: number }>(path: string) {
   const [items, setItems] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
   const load = () => {
@@ -55,7 +55,7 @@ function NameInput({ value, onChange, placeholder }: { value: string; onChange: 
 }
 
 function ModulesPanel() {
-  const { items, loading, load } = useSimpleList<ProductModule>("/config/modules", "模块")
+  const { items, loading, load } = useSimpleList<ProductModule>("/config/modules")
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
   const add = async () => {
@@ -90,7 +90,7 @@ function ModulesPanel() {
 }
 
 function SubModulesPanel() {
-  const { items, loading, load } = useSimpleList<SubModule>("/config/sub-modules", "子模块")
+  const { items, loading, load } = useSimpleList<SubModule>("/config/sub-modules")
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
   const add = async () => {
@@ -125,7 +125,7 @@ function SubModulesPanel() {
 }
 
 function DomainsPanel() {
-  const { items, loading, load } = useSimpleList<IssueDomain>("/config/domains", "问题领域")
+  const { items, loading, load } = useSimpleList<IssueDomain>("/config/domains")
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
   const add = async () => {
@@ -163,7 +163,7 @@ function DomainsPanel() {
 }
 
 function ProductsPanel() {
-  const { items, loading, load } = useSimpleList<Product>("/config/products", "产品")
+  const { items, loading, load } = useSimpleList<Product>("/config/products")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [saving, setSaving] = useState(false)
@@ -205,7 +205,7 @@ function ProductsPanel() {
 }
 
 function VersionsPanel() {
-  const { items, loading, load } = useSimpleList<ProductVersion>("/config/versions", "版本")
+  const { items, loading, load } = useSimpleList<ProductVersion>("/config/versions")
   const [products, setProducts] = useState<Product[]>([])
   const [productId, setProductId] = useState("")
   const [version, setVersion] = useState("")
