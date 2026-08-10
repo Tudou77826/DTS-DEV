@@ -32,7 +32,7 @@ export async function apiLogin(page: Page, username: string, password: string): 
 }
 
 async function apiGet(page: Page, path: string, token: string) {
-  const res = await page.request.get(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+  const res = await page.request.get(`${API}${path}`, { headers: { "X-Auth-Token": token } })
   const body = await res.json()
   if (body.code !== 0) throw new Error(`GET ${path} 失败: ${body.message}`)
   return body.data
@@ -40,7 +40,7 @@ async function apiGet(page: Page, path: string, token: string) {
 
 async function apiPost(page: Page, path: string, token: string | null, body: unknown) {
   const headers: Record<string, string> = {}
-  if (token) headers.Authorization = `Bearer ${token}`
+  if (token) headers["X-Auth-Token"] = token
   const res = await page.request.post(`${API}${path}`, { headers, data: body })
   const parsed = await res.json()
   if (parsed.code !== 0) throw new Error(`POST ${path} 失败: ${parsed.message}`)

@@ -30,7 +30,7 @@ import java.util.Optional;
  * <p>典型流程：
  * <ol>
  *   <li>浏览器首次进入（无 JWT，但带 SSO cookie）→ 本过滤器调 {@link SsoAuthenticator}
- *       认证成功 → 建 SecurityContext + 响应头 {@code X-DTS-Token} 写回 JWT；前端读到后存本地。</li>
+ *       认证成功 → 建 SecurityContext + 响应头 {@code X-Auth-Token} 写回 JWT；前端读到后存本地。</li>
  *   <li>后续请求（前端带 JWT）→ {@code JwtAuthFilter} 先认领身份，本过滤器见 SecurityContext
  *       已有认证直接放行，不再调 W3X。</li>
  *   <li>JWT 过期/SSO cookie 失效 → 请求匿名通过，由 SecurityConfig 的 401 入口点触发前端跳转登录。</li>
