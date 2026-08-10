@@ -43,17 +43,26 @@ app:
     external-file: ./config/dts-customization.yml
   auth:
     # 本地账号密码登录开关（开发模式默认开启；生产接入统一认证后应通过
-    # DTS_AUTH_LOCAL_ENABLED=false 关闭）
+    # DTS_AUTH_LOCAL_ENABLED=false 关闭，仅作非内网环境兜底）
     local:
       enabled: ${DTS_AUTH_LOCAL_ENABLED:true}
-  oauth:
-    header:
-      # 信任反向代理（OAuth 认证网关）注入的用户头。启用后网关必须注入用户名头并剥离外部伪造的同名头。
-      enabled: ${DTS_OAUTH_HEADER_ENABLED:false}
-      username-header: ${DTS_OAUTH_USERNAME_HEADER:X-Auth-User}
-      display-name-header: ${DTS_OAUTH_DISPLAY_NAME_HEADER:X-Auth-Display-Name}
-      email-header: ${DTS_OAUTH_EMAIL_HEADER:X-Auth-Email}
-      employee-no-header: ${DTS_OAUTH_EMPLOYEE_NO_HEADER:X-Auth-Employee-No}
+  sso:
+    # 是否启用公司统一身份源（W3/W3X）认证。启用后应用主动调 W3X 取用户身份，
+    # 成功后换发本系统 JWT；本地账号密码登录仍可通过上面的开关保留为兜底。
+    # 内网部署方接手时：填入真实 URL / cookie 名后置为 true 即可生效。
+    enabled: ${DTS_SSO_ENABLED:false}
+    # W3X「按 cookie 取用户信息」接口（GET）。占位，请替换为真实地址。
+    user-info-url: ${DTS_SSO_USER_INFO_URL:https://w3x.example.com/api/user}
+    # W3 登录页地址，前端在 SSO 会话失效（401）时外跳至此，并附回跳参数。
+    login-page-url: ${DTS_SSO_LOGIN_PAGE_URL:https://w3.example.com/login}
+    # W3 登录页识别的回跳参数名。
+    redirect-param: ${DTS_SSO_REDIRECT_PARAM:redirect}
+    # W3 登录成功后回跳 URL 中携带 SSO 凭证的参数名（跨域场景前端从此参数取凭证换 token）。
+    credential-param: ${DTS_SSO_CREDENTIAL_PARAM:token}
+    # SSO 会话 cookie 的名称（仅同域场景 SsoAuthFilter 自动读取浏览器 cookie 时使用）。
+    cookie-name: ${DTS_SSO_COOKIE_NAME:W3_TOKEN}
+    connect-timeout-ms: ${DTS_SSO_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${DTS_SSO_READ_TIMEOUT_MS:5000}
   admin-token:
     # 接入定制共享密码门禁签发的管理员令牌有效期
     expiration-ms: 1800000   # 30min

@@ -28,10 +28,18 @@ export interface User {
   subModuleId?: number | null
 }
 
-/** 认证方式：local = 本地账号密码；oauth = 反向代理注入用户头 */
+/** 认证方式：local = 本地账号密码；sso = 公司统一身份源（W3/W3X） */
 export interface AuthMode {
-  mode: "local" | "oauth"
+  mode: "local" | "sso"
   localLoginEnabled: boolean
+  /** 是否启用 SSO（前端据此判断 401 是否外跳 W3 登录页）。 */
+  ssoEnabled: boolean
+  /** SSO 登录页 URL（仅 ssoEnabled=true 时有意义）。 */
+  ssoLoginPageUrl?: string
+  /** SSO 登录页识别的回跳参数名。 */
+  ssoRedirectParam?: string
+  /** W3 登录成功后回跳 URL 中携带 SSO 凭证的参数名（前端按此取凭证再换 token）。 */
+  ssoCredentialParam?: string
 }
 
 export interface AdminVerifyResult {
