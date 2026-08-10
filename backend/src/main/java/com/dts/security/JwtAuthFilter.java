@@ -30,9 +30,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+        // 统一用 X-Auth-Token 头携带 JWT（本地登录 / SSO 换发的 token 走同一个头）。
+        // 兼容仍带 "Bearer " 前缀的旧客户端，逐步过渡到纯 token。
+        String raw = request.getHeader("X-Auth-Token");
+        if (raw != null) {
+            String token = raw.trim();
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7).trim();
+            }
             try {
                 Claims claims = jwtUtil.parse(token);
                 LoginUser user = new LoginUser(

@@ -51,8 +51,24 @@ public class AuthDtos {
 
     @Data
     public static class AuthMode {
-        /** local = 本地账号密码；oauth = 反向代理注入用户头 */
+        /** local = 本地账号密码；sso = 公司统一身份源（W3/W3X） */
         private String mode;
         private boolean localLoginEnabled;
+        /** 是否启用 SSO（前端据此判断 401 是否跳 W3 登录页）。 */
+        private boolean ssoEnabled;
+        /** SSO 登录页 URL（仅 ssoEnabled=true 时有意义，前端跳转用）。 */
+        private String ssoLoginPageUrl;
+        /** SSO 登录页识别的回跳参数名。 */
+        private String ssoRedirectParam;
+        /** W3 登录成功后回跳 URL 中携带 SSO 凭证的参数名（前端据此从回跳 URL 取凭证再换 token）。 */
+        private String ssoCredentialParam;
+    }
+
+    /** SSO 回跳后前端换取本系统 JWT 的请求体：携带从 W3 回跳 URL 取到的凭证。 */
+    @Data
+    public static class SsoExchangeRequest {
+        /** W3 回跳 URL 中携带的凭证值（cookie 值或一次性 token，由 W3 决定）。 */
+        @NotBlank(message = "SSO 凭证不能为空")
+        private String credential;
     }
 }

@@ -29,7 +29,7 @@ class MasterDataIT extends IssueFlowIT {
     void writeRequiresAdminToken() throws Exception {
         // 普通用户（leader 无管理员令牌）写字典 → 403
         mvc.perform(post("/config/products")
-                        .header("Authorization", "Bearer " + leaderToken())
+                        .header("X-Auth-Token", leaderToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"越权产品\",\"active\":true}"))
                 .andExpect(status().isForbidden());

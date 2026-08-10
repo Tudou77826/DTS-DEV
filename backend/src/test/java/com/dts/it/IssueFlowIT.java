@@ -65,7 +65,7 @@ class IssueFlowIT {
     }
 
     protected JsonNode getJson(String path, String token) throws Exception {
-        MvcResult result = mvc.perform(get(path).header("Authorization", "Bearer " + token))
+        MvcResult result = mvc.perform(get(path).header("X-Auth-Token", token))
                 .andExpect(status().isOk())
                 .andReturn();
         return om.readTree(result.getResponse().getContentAsString());
@@ -73,7 +73,7 @@ class IssueFlowIT {
 
     protected JsonNode postJson(String path, String token, Object body) throws Exception {
         MvcResult result = mvc.perform(post(path)
-                        .header("Authorization", "Bearer " + token)
+                        .header("X-Auth-Token", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(om.writeValueAsString(body)))
                 .andExpect(status().isOk())
@@ -84,7 +84,7 @@ class IssueFlowIT {
     /** 不校验 HTTP 状态的请求，用于断言业务拒绝（4xx + code != 0）。 */
     protected JsonNode postAny(String path, String token, Object body) throws Exception {
         MvcResult result = mvc.perform(post(path)
-                        .header("Authorization", "Bearer " + token)
+                        .header("X-Auth-Token", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(om.writeValueAsString(body)))
                 .andReturn();
@@ -93,7 +93,7 @@ class IssueFlowIT {
 
     protected JsonNode postRawJson(String path, String token, String rawBody) throws Exception {
         MvcResult result = mvc.perform(post(path)
-                        .header("Authorization", "Bearer " + token)
+                        .header("X-Auth-Token", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(rawBody))
                 .andExpect(status().isOk())
@@ -110,7 +110,7 @@ class IssueFlowIT {
             default -> throw new IllegalArgumentException(method);
         };
         MvcResult result = mvc.perform(builder
-                        .header("Authorization", "Bearer " + token)
+                        .header("X-Auth-Token", token)
                         .header("X-Admin-Token", admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body == null ? "{}" : body))
@@ -122,7 +122,7 @@ class IssueFlowIT {
     protected JsonNode adminGet(String path, String token) throws Exception {
         String admin = adminToken();
         MvcResult result = mvc.perform(get(path)
-                        .header("Authorization", "Bearer " + token)
+                        .header("X-Auth-Token", token)
                         .header("X-Admin-Token", admin))
                 .andExpect(status().isOk())
                 .andReturn();

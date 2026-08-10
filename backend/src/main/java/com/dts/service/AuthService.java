@@ -6,6 +6,7 @@ import com.dts.dto.AuthDtos;
 import com.dts.mapper.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.dts.security.JwtUtil;
+import com.dts.security.SsoSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -84,7 +85,12 @@ public class AuthService {
         return buildResponse(token, user);
     }
 
-    private AuthDtos.LoginResponse buildResponse(String token, User user) {
+    /** 供 SSO 认证链复用：把 {@link SsoSession}（含已签发 JWT 与本地用户）装成登录响应。 */
+    public AuthDtos.LoginResponse buildSsoResponse(SsoSession session) {
+        return buildResponse(session.getToken(), session.getUser());
+    }
+
+    AuthDtos.LoginResponse buildResponse(String token, User user) {
         AuthDtos.UserVo vo = new AuthDtos.UserVo();
         vo.setId(user.getId());
         vo.setEmployeeNo(user.getEmployeeNo());
