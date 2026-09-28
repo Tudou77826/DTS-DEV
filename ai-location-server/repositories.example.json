@@ -1,0 +1,26 @@
+{
+  "workdir": "D:/ai-location/workspace",
+  "repositories": [
+    {
+      "id": "gateway",
+      "name": "接入网关",
+      "kind": "code",
+      "root": "code/gateway",
+      "enabled": true
+    },
+    {
+      "id": "policy",
+      "name": "策略服务",
+      "kind": "code",
+      "root": "code/policy",
+      "enabled": true
+    },
+    {
+      "id": "operations",
+      "name": "定位经验",
+      "kind": "experience",
+      "root": "knowledge/operations",
+      "enabled": true
+    }
+  ]
+}
