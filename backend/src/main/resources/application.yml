@@ -39,6 +39,10 @@ mybatis-plus:
 
 # 认证
 app:
+  ai-location:
+    enabled: ${APP_AI_LOCATION_ENABLED:false}
+    url: ${APP_AI_LOCATION_URL:http://127.0.0.1:8091}
+    key: ${APP_AI_LOCATION_KEY:local-dev-ai-key}
   customization:
     external-file: ./config/dts-customization.yml
   auth:

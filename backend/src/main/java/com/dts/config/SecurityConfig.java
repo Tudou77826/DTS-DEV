@@ -68,7 +68,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(reg -> reg
                         // 公开端点
                         .requestMatchers("/auth/login", "/auth/register", "/auth/mode", "/auth/sso/**",
-                                "/config/customization", "/config/customization/admin/verify").permitAll()
+                                "/config/customization", "/config/customization/admin/verify",
+                                "/ai-location/internal/questions").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())

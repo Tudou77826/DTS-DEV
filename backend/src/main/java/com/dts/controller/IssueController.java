@@ -11,10 +11,12 @@ import com.dts.dto.IssueDtos;
 import com.dts.dto.IssueExportRow;
 import com.dts.dto.IssueVo;
 import com.dts.service.IssueService;
+import com.dts.service.AiLocationBridge;
 import com.dts.service.FeatureGuard;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -26,10 +28,20 @@ import java.util.Map;
 @RestController
 @RequestMapping("/issues")
 @RequiredArgsConstructor
+@Slf4j
 public class IssueController {
 
     private final IssueService issueService;
     private final FeatureGuard featureGuard;
+    private final AiLocationBridge aiLocationBridge;
+
+    private void submitAiBestEffort(IssueVo issue) {
+        try {
+            aiLocationBridge.submitIssue(issue);
+        } catch (RuntimeException ex) {
+            log.warn("AI location scheduling failed for issue {}: {}", issue.getId(), ex.getMessage());
+        }
+    }
 
     @GetMapping
     public ApiResponse<PageResult<IssueVo>> page(IssueDtos.IssueQuery query) {
@@ -70,25 +82,33 @@ public class IssueController {
 
     @PostMapping
     public ApiResponse<IssueVo> create(@Valid @RequestBody IssueDtos.IssueSaveRequest req) {
-        return ApiResponse.ok(issueService.create(req));
+        IssueVo issue = issueService.create(req);
+        submitAiBestEffort(issue);
+        return ApiResponse.ok(issue);
     }
 
     @PutMapping("/{id}")
     public ApiResponse<IssueVo> update(@PathVariable Long id, @Valid @RequestBody IssueDtos.IssueSaveRequest req) {
         req.setId(id);
-        return ApiResponse.ok(issueService.update(req));
+        IssueVo issue = issueService.update(req);
+        submitAiBestEffort(issue);
+        return ApiResponse.ok(issue);
     }
 
     // ─── 分配/状态 ───
 
     @PostMapping("/{id}/assign")
     public ApiResponse<IssueVo> assign(@PathVariable Long id, @RequestBody IssueDtos.AssignRequest req) {
-        return ApiResponse.ok(issueService.assign(id, req));
+        IssueVo issue = issueService.assign(id, req);
+        submitAiBestEffort(issue);
+        return ApiResponse.ok(issue);
     }
 
     @PostMapping("/{id}/status")
     public ApiResponse<IssueVo> changeStatus(@PathVariable Long id, @RequestBody IssueDtos.StatusChangeRequest req) {
-        return ApiResponse.ok(issueService.changeStatus(id, req));
+        IssueVo issue = issueService.changeStatus(id, req);
+        submitAiBestEffort(issue);
+        return ApiResponse.ok(issue);
     }
 
     // ─── 进展 ───

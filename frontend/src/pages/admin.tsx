@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Loader2, MessageSquareText, SlidersHorizontal } from "lucide-react"
+import { Bot, Loader2, MessageSquareText, SlidersHorizontal } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageBody, PageHeader } from "@/components/app-layout"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,9 +12,10 @@ import { useAuth } from "@/store/auth"
 import { toast } from "sonner"
 import { CustomizationPage, AdminGate } from "@/pages/customization"
 import type { Feedback } from "@/lib/types"
+import { AiLocationAdminPanel } from "@/components/ai-location/admin-panel"
 
 /**
- * 管理员页面：共享密码门禁后，提供「接入定制」与「使用反馈处理」。
+ * 管理员页面：共享密码门禁后，提供接入定制、使用反馈处理与 AI 辅助定位管理。
  * 入口在左下角用户菜单（不校验身份，凭管理员密码进入）。
  */
 export function AdminPage() {
@@ -41,18 +42,22 @@ export function AdminPage() {
 
   return (
     <>
-      <PageHeader title="管理员页面" subtitle="接入定制与使用反馈处理（管理员专属）" />
+      <PageHeader title="管理员页面" subtitle="接入定制、AI 定位与使用反馈处理（管理员专属）" />
       <PageBody>
         <Tabs defaultValue="customization">
           <TabsList>
             <TabsTrigger value="customization"><SlidersHorizontal className="size-4" /> 接入定制</TabsTrigger>
             <TabsTrigger value="feedback"><MessageSquareText className="size-4" /> 使用反馈处理</TabsTrigger>
+            <TabsTrigger value="ai-location"><Bot className="size-4" /> AI 辅助定位</TabsTrigger>
           </TabsList>
           <TabsContent value="customization" className="mt-4">
             <CustomizationPage embedded />
           </TabsContent>
           <TabsContent value="feedback" className="mt-4">
             <FeedbackAdminPanel />
+          </TabsContent>
+          <TabsContent value="ai-location" className="mt-4">
+            <AiLocationAdminPanel />
           </TabsContent>
         </Tabs>
       </PageBody>
