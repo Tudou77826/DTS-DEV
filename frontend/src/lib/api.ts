@@ -61,6 +61,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const isAdminPath = path.includes("/customization/admin")
       || path.startsWith("/config")
       || path.startsWith("/feedback")
+      || path.startsWith("/ai-location/admin")
   if (adminToken && isAdminPath) {
     headers[ADMIN_TOKEN_HEADER] = adminToken
   }

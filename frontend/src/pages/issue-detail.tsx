@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
-import { ArrowLeft, Loader2, Pencil } from "lucide-react"
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom"
+import { ArrowLeft, Loader2, Pencil, Sparkles } from "lucide-react"
 import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { CommentList } from "@/components/issue/comment-list"
 import { OperationTimeline } from "@/components/issue/operation-timeline"
 import { AttachmentPanel } from "@/components/issue/attachment-panel"
 import { RelationPanel } from "@/components/issue/relation-panel"
+import { AiLocationPanel, AiLocationIndicator } from "@/components/issue/ai-location-panel"
 import {
   PRIORITY_META, formatDateTime, formatDuration,
 } from "@/lib/labels"
@@ -27,6 +28,7 @@ import type {
 import { useCustomization } from "@/store/customization"
 
 export function IssueDetailPage() {
+  const [searchParams] = useSearchParams()
   const { id } = useParams()
   const navigate = useNavigate()
   const [issue, setIssue] = useState<Issue | null>(null)
@@ -36,6 +38,7 @@ export function IssueDetailPage() {
   const [attachments, setAttachments] = useState<IssueAttachment[]>([])
   const [relations, setRelations] = useState<IssueRelation[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState(() => searchParams.has("aiQuestion") ? "ai-location" : "info")
   const customization = useCustomization((state) => state.value)
   const attachmentsEnabled = customization?.features.attachments !== false
   const relationsEnabled = customization?.features.relations !== false
@@ -124,9 +127,10 @@ export function IssueDetailPage() {
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="info">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
                 <TabsTrigger value="info">基础信息</TabsTrigger>
+                <TabsTrigger value="ai-location"><Sparkles className="size-3.5 text-teal-700 dark:text-teal-400" />AI 辅助定位<AiLocationIndicator issueId={issue.id} /></TabsTrigger>
                 <TabsTrigger value="progress">处理记录 ({progress.length})</TabsTrigger>
                 <TabsTrigger value="comments">评论 ({comments.length})</TabsTrigger>
                 {attachmentsEnabled && <TabsTrigger value="attachments">附件 ({attachments.length})</TabsTrigger>}
@@ -136,6 +140,9 @@ export function IssueDetailPage() {
 
               <TabsContent value="info" className="mt-4">
                 <IssueMeta issue={issue} />
+              </TabsContent>
+              <TabsContent value="ai-location" className="mt-4">
+                <AiLocationPanel issue={issue} />
               </TabsContent>
               <TabsContent value="progress" className="mt-4">
                 <ProgressTimeline issueId={issue.id} items={progress} onChanged={load} />
