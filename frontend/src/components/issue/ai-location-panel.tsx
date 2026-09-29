@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import {
   Check,
@@ -10,12 +10,12 @@ import {
 } from "lucide-react"
 import {
   aiLocation,
-  type LocationIssueView,
   type LocationJob,
   type LocationQuestion,
 } from "@/lib/ai-location"
 import type { Issue } from "@/lib/types"
 import { useAuth } from "@/store/auth"
+import { useAiLocationView } from "@/hooks/use-ai-location-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -28,30 +28,9 @@ function statusText(job: LocationJob | null) {
 }
 
 export function AiLocationIndicator({ issueId }: { issueId: number }) {
-  const [pending, setPending] = useState(0)
-  useEffect(() => {
-    let live = true
-    setPending(0)
-    const load = () =>
-      aiLocation
-        .issue(issueId)
-        .then((next) => {
-          if (live)
-            setPending(
-              next.questions.filter((question) => question.status === "open")
-                .length,
-            )
-        })
-        .catch(() => {
-          /* Keep the last known reminder during a temporary outage. */
-        })
-    void load()
-    const timer = window.setInterval(() => void load(), 5000)
-    return () => {
-      live = false
-      window.clearInterval(timer)
-    }
-  }, [issueId])
+  const { view } = useAiLocationView(issueId)
+  const pending =
+    view?.questions.filter((question) => question.status === "open").length ?? 0
   return pending > 0 ? (
     <span
       role="status"
@@ -67,29 +46,19 @@ export function AiLocationPanel({ issue }: { issue: Issue }) {
   const focusedQuestionId = searchParams.get("aiQuestion")
   const scrolledQuestion = useRef<string | null>(null)
   const user = useAuth((state) => state.user)
-  const [view, setView] = useState<LocationIssueView | null>(null)
+  const { view, refresh, error: viewError } = useAiLocationView(issue.id)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
-  const refresh = useCallback(async () => {
-    try {
-      const next = await aiLocation.issue(issue.id)
-      setView(next)
-      setSelectedId((current) =>
-        current && next.jobs.some((job) => job.id === current)
-          ? current
-          : next.latest?.id || null,
-      )
-      setError("")
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "无法连接定位服务")
-    }
-  }, [issue.id])
+  const displayError = error || viewError
   useEffect(() => {
-    void refresh()
-    const timer = window.setInterval(() => void refresh(), 3000)
-    return () => window.clearInterval(timer)
-  }, [refresh])
+    if (!view) return
+    setSelectedId((current) =>
+      current && view.jobs.some((job) => job.id === current)
+        ? current
+        : view.latest?.id || null,
+    )
+  }, [view])
   useEffect(() => {
     if (
       !focusedQuestionId ||
@@ -151,12 +120,12 @@ export function AiLocationPanel({ issue }: { issue: Issue }) {
           </Button>
         </CardContent>
       </Card>
-      {error && (
+      {displayError && (
         <div
           role="alert"
           className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
         >
-          {error}
+          {displayError}
         </div>
       )}
       {view?.questions && view.questions.length > 0 && (
@@ -200,7 +169,7 @@ export function AiLocationPanel({ issue }: { issue: Issue }) {
           ))}
         </div>
       )}
-      {!selected && !error && (
+      {!selected && !displayError && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             等待自动分析启动…

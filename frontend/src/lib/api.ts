@@ -97,7 +97,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "POST", body: data ? JSON.stringify(data) : undefined }),
+    request<T>(path, {
+      method: "POST",
+      // FormData 原样交给 fetch（浏览器自动生成 multipart 边界），其余序列化为 JSON。
+      body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined,
+    }),
   put: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "PUT", body: data ? JSON.stringify(data) : undefined }),
   patch: <T>(path: string, data?: unknown) =>

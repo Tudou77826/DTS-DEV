@@ -5,27 +5,58 @@ import { api } from "@/lib/api"
 import { PageHeader, PageBody } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
-import { StatusBadge } from "@/components/status-badge"
-import { UserAvatar } from "@/components/user-avatar"
 import { IssueMeta } from "@/components/issue/issue-meta"
 import { IssueActions } from "@/components/issue/issue-actions"
 import { ProgressTimeline } from "@/components/issue/progress-timeline"
 import { CommentList } from "@/components/issue/comment-list"
-import { OperationTimeline } from "@/components/issue/operation-timeline"
+import { TimelineDrawer } from "@/components/issue/timeline-drawer"
 import { AttachmentPanel } from "@/components/issue/attachment-panel"
 import { RelationPanel } from "@/components/issue/relation-panel"
 import { AiLocationPanel, AiLocationIndicator } from "@/components/issue/ai-location-panel"
-import {
-  PRIORITY_META, formatDateTime, formatDuration,
-} from "@/lib/labels"
+import { IssueFlowDiagram } from "@/components/issue/issue-flow-diagram"
+import { FoldWhenEmpty } from "@/components/issue/fold-when-empty"
+import type { FlowStation } from "@/components/issue/issue-flow-spine"
+import { formatShortDateTime } from "@/lib/labels"
+import { Badge } from "@/components/ui/badge"
 import type {
-  Issue, IssueProgress, Comment, OperationLog, Priority,
+  Issue, IssueProgress, Comment, OperationLog,
   IssueAttachment, IssueRelation,
 } from "@/lib/types"
 import { useCustomization } from "@/store/customization"
+
+
+
+/** 主功能区三个 Tab 对应三种职能：提出（测试/提出人）、处理（开发）、AI 辅助 */
+type FlowTab = "raised" | "handling" | "ai"
+
+/** 旧版 7 Tab 的 key 兼容映射，老链接不失效 */
+const LEGACY_TAB_MAP: Record<string, FlowTab> = {
+  info: "raised",
+  attachments: "raised",
+  relations: "raised",
+  progress: "handling",
+  "ai-location": "ai",
+  comments: "raised",
+  timeline: "raised",
+}
+
+function resolveTab(searchParams: URLSearchParams): FlowTab {
+  if (searchParams.has("aiQuestion")) return "ai"
+  const tab = searchParams.get("tab")
+  if (tab && (["raised", "handling", "ai"] as const).includes(tab as FlowTab)) return tab as FlowTab
+  if (tab && LEGACY_TAB_MAP[tab]) return LEGACY_TAB_MAP[tab]
+  return "raised"
+}
+
+/** 流程图节点 → 下方职能 Tab：提出看提出区，AI 看 AI 区，其余人工节点看处理区。 */
+function stationTarget(station: FlowStation): { tab: FlowTab; title: string } {
+  if (station.kind === "ai") return { tab: "ai", title: "查看 AI 辅助处理" }
+  if (station.kind === "handler" || station.id !== "raised") {
+    return { tab: "handling", title: "查看问题处理" }
+  }
+  return { tab: "raised", title: "查看问题提出" }
+}
 
 export function IssueDetailPage() {
   const [searchParams] = useSearchParams()
@@ -38,7 +69,7 @@ export function IssueDetailPage() {
   const [attachments, setAttachments] = useState<IssueAttachment[]>([])
   const [relations, setRelations] = useState<IssueRelation[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(() => searchParams.has("aiQuestion") ? "ai-location" : "info")
+  const [activeTab, setActiveTab] = useState<FlowTab>(() => resolveTab(searchParams))
   const customization = useCustomization((state) => state.value)
   const attachmentsEnabled = customization?.features.attachments !== false
   const relationsEnabled = customization?.features.relations !== false
@@ -63,6 +94,18 @@ export function IssueDetailPage() {
   }, [id, attachmentsEnabled, relationsEnabled])
 
   useEffect(() => { load() }, [load])
+
+  // 标题栏下沿：时间线抽屉与把手的锚点。页面拥有布局知识，量好再传给抽屉。
+  const [headerBottom, setHeaderBottom] = useState(84)
+  useEffect(() => {
+    const measure = () => {
+      const header = document.querySelector("main > div.flex.items-center.justify-between")
+      if (header) setHeaderBottom(Math.round(header.getBoundingClientRect().bottom))
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
 
   if (loading) return (
     <>
@@ -100,88 +143,73 @@ export function IssueDetailPage() {
       />
       <PageBody>
         <div className="grid gap-4 lg:grid-cols-3">
-          {/* 左侧主体 */}
-          <div className="space-y-4 lg:col-span-2">
-            {/* 概览条 */}
-            <Card>
-              <CardContent className="flex flex-wrap items-center gap-3 p-4">
-                <StatusBadge status={issue.status} />
-                <Badge variant="secondary" className={PRIORITY_META[issue.priority as Priority]?.className}>
-                  {PRIORITY_META[issue.priority as Priority]?.label}优先级
-                </Badge>
-                {issue.overdue && <Badge variant="destructive">已超期</Badge>}
-                <Separator orientation="vertical" className="h-5" />
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">责任人</span>
-                  {issue.assigneeName ? (
-                    <div className="flex items-center gap-1.5">
-                      <UserAvatar name={issue.assigneeName} color={issue.assigneeColor} className="size-5" />
-                      <span>{issue.assigneeName}</span>
-                    </div>
-                  ) : <span className="text-muted-foreground">未分配</span>}
-                </div>
-                <Separator orientation="vertical" className="h-5" />
-                <span className="text-sm text-muted-foreground">
-                  定位时长 <span className="font-medium text-foreground">{formatDuration(issue.locateDurationMin)}</span>
-                </span>
-              </CardContent>
-            </Card>
+          {/* 左侧主体：流程图 + 三个职能分区（min-w-0 允许内部横向滚动，不撑破网格） */}
+          <div className="min-w-0 space-y-4 lg:col-span-2">
+            {/* 流程图（替代原概览条，原状态信息并入卡片头；点节点切下方职能分区） */}
+            <IssueFlowDiagram
+              issue={issue}
+              ops={ops}
+              onStationClick={(station) => setActiveTab(stationTarget(station).tab)}
+              stationTitle={(station) => stationTarget(station).title}
+            />
 
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FlowTab)}>
               <TabsList>
-                <TabsTrigger value="info">基础信息</TabsTrigger>
-                <TabsTrigger value="ai-location"><Sparkles className="size-3.5 text-teal-700 dark:text-teal-400" />AI 辅助定位<AiLocationIndicator issueId={issue.id} /></TabsTrigger>
-                <TabsTrigger value="progress">处理记录 ({progress.length})</TabsTrigger>
-                <TabsTrigger value="comments">评论 ({comments.length})</TabsTrigger>
-                {attachmentsEnabled && <TabsTrigger value="attachments">附件 ({attachments.length})</TabsTrigger>}
-                {relationsEnabled && <TabsTrigger value="relations">关联 ({relations.length})</TabsTrigger>}
-                <TabsTrigger value="timeline">操作时间线</TabsTrigger>
+                <TabsTrigger value="raised">问题提出</TabsTrigger>
+                <TabsTrigger value="handling">问题处理 ({progress.length})</TabsTrigger>
+                <TabsTrigger value="ai">
+                  <Sparkles className="size-3.5 text-teal-700 dark:text-teal-400" />AI 辅助
+                  <AiLocationIndicator issueId={issue.id} />
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="info" className="mt-4">
+              <TabsContent value="raised" className="mt-4 space-y-4">
                 <IssueMeta issue={issue} />
+                {attachmentsEnabled && (
+                  <FoldWhenEmpty title="附件" count={attachments.length} hint="截图、日志与复现材料">
+                    <AttachmentPanel issueId={issue.id} items={attachments} onChanged={load} />
+                  </FoldWhenEmpty>
+                )}
+                {relationsEnabled && (
+                  <FoldWhenEmpty title="问题关联" count={relations.length} hint="标记相关问题或重复问题">
+                    <RelationPanel issueId={issue.id} items={relations} onChanged={load} />
+                  </FoldWhenEmpty>
+                )}
               </TabsContent>
-              <TabsContent value="ai-location" className="mt-4">
-                <AiLocationPanel issue={issue} />
-              </TabsContent>
-              <TabsContent value="progress" className="mt-4">
+              <TabsContent value="handling" className="mt-4">
                 <ProgressTimeline issueId={issue.id} items={progress} onChanged={load} />
               </TabsContent>
-              <TabsContent value="comments" className="mt-4">
-                <CommentList issueId={issue.id} items={comments} onChanged={load} />
-              </TabsContent>
-              {attachmentsEnabled && <TabsContent value="attachments" className="mt-4">
-                <AttachmentPanel issueId={issue.id} items={attachments} onChanged={load} />
-              </TabsContent>}
-              {relationsEnabled && <TabsContent value="relations" className="mt-4">
-                <RelationPanel issueId={issue.id} items={relations} onChanged={load} />
-              </TabsContent>}
-              <TabsContent value="timeline" className="mt-4">
-                <OperationTimeline items={ops} />
+              <TabsContent value="ai" className="mt-4">
+                <AiLocationPanel issue={issue} />
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* 右侧侧栏 */}
+          {/* 右侧侧栏：Issue 级信息（不属于任何职能分区） */}
           <div className="space-y-4">
             <Card>
-              <CardContent className="space-y-3 p-5 text-sm">
-                <Row label="提出人" value={issue.submitterName || "-"} />
-                <Row label="工号" value={issue.submitterNo || "-"} />
-                <Row label="提出时间" value={formatDateTime(issue.raisedAt)} />
-                <Row label="所属模块" value={issue.moduleName || "-"} />
-                {issue.subModule && <Row label="子模块" value={issue.subModule} />}
-                <Row label="来源产品" value={issue.productName || "-"} />
-                <Row label="问题领域" value={issue.domainName || "-"} />
-                <Row label="发现版本" value={issue.foundVersionName || "-"} />
-                {issue.expectedFinishAt && <Row label="期望解决" value={formatDateTime(issue.expectedFinishAt)} />}
-                {issue.issueFlag && <Row label="标注" value={issue.issueFlag === "PROBLEM" ? "是问题" : "非问题"} />}
-                {issue.dtsTicketNo && <Row label="DTS 单号" value={issue.dtsTicketNo} />}
-                {issue.planFinishAt && <Row label="计划完成" value={formatDateTime(issue.planFinishAt)} />}
-                {issue.locatedAt && <Row label="开始定位" value={formatDateTime(issue.locatedAt)} />}
-                {issue.resolvedAt && <Row label="解决时间" value={formatDateTime(issue.resolvedAt)} />}
-                {issue.closedAt && <Row label="关闭时间" value={formatDateTime(issue.closedAt)} />}
-                <Row label="最后更新" value={formatDateTime(issue.updatedAt)} />
+              <CardContent className="p-4">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                  <MetaCell label="提出人" value={issue.submitterName} />
+                  <MetaCell label="工号" value={issue.submitterNo} />
+                  <MetaCell label="提出" value={formatShortDateTime(issue.raisedAt)} />
+                  <MetaCell label="期望解决" value={formatShortDateTime(issue.expectedFinishAt)} />
+                  <MetaCell
+                    label="模块"
+                    value={[issue.moduleName, issue.subModule].filter(Boolean).join(" / ") || null}
+                    wide
+                  />
+                  <MetaCell label="来源产品" value={issue.productName} />
+                  <MetaCell label="问题领域" value={issue.domainName} />
+                  <MetaCell label="发现版本" value={issue.foundVersionName} />
+                  <MetaCell label="DTS 单号" value={issue.dtsTicketNo} />
+                  <MetaCell label="标注" value={issue.issueFlag ? (issue.issueFlag === "PROBLEM" ? "是问题" : "非问题") : null} />
+                  <MetaCell label="计划完成" value={formatShortDateTime(issue.planFinishAt)} />
+                  <MetaCell label="开始定位" value={formatShortDateTime(issue.locatedAt)} />
+                  <MetaCell label="解决" value={formatShortDateTime(issue.resolvedAt)} />
+                  <MetaCell label="关闭" value={formatShortDateTime(issue.closedAt)} />
+                  <MetaCell label="最后更新" value={formatShortDateTime(issue.updatedAt)} />
+                </div>
               </CardContent>
             </Card>
 
@@ -202,18 +230,24 @@ export function IssueDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            <CommentList issueId={issue.id} items={comments} onChanged={load} />
           </div>
         </div>
+        {/* 操作时间线：屏幕右缘收纳式抽屉，不占版面流 */}
+        <TimelineDrawer items={ops} topOffset={headerBottom} />
       </PageBody>
     </>
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/** 侧栏属性的小单元格：标签在上、值在下；空值不渲染（不出现「-」行）。 */
+function MetaCell({ label, value, wide }: { label: string; value?: string | null; wide?: boolean }) {
+  if (!value || value === "-") return null
   return (
-    <div className="flex justify-between gap-3">
-      <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value}</span>
+    <div className={wide ? "col-span-2" : undefined}>
+      <div className="text-[10px] leading-none text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate text-xs font-medium" title={value}>{value}</div>
     </div>
   )
 }

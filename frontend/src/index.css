@@ -176,3 +176,136 @@
     opacity: 0.5;
   }
 }
+
+/* ============================================================
+   问题流程图·脊线运动词汇（移植自 ZCode packages/ui/styles.css 的工作流
+   时间线部分，Apache-2.0）。一条曲线，全部时长变量收在 .wf-motion 里；
+   只动 opacity / transform / 颜色，从不动布局属性；reduced-motion 全部归零。
+   ============================================================ */
+.wf-motion {
+  --wf-warning: #f59e0b;
+  --wf-success: #10b981;
+  --wf-destructive: #ef4444;
+  --wf-subtle: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  --wf-t-fast: 120ms;
+  --wf-t-base: 160ms;
+  --wf-t-enter: 200ms;
+  --wf-t-ink: 320ms;
+  --wf-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* 正在运行的灯的心跳周期。 */
+  --wf-beat: 1.6s;
+}
+
+.wf-lamp {
+  transition:
+    background-color var(--wf-t-ink) var(--wf-ease),
+    border-color var(--wf-t-ink) var(--wf-ease),
+    box-shadow var(--wf-t-base) var(--wf-ease);
+}
+
+/*
+ * 正在运行的灯：常亮的 3px 光晕，加每 1.6s 一下心跳（wf-beat）——灯鼓到 1.12 倍
+ * 再落回，同时从光晕边缘放出一圈环，涨到灯外 8px 时淡尽。reduced-motion 下只剩常亮的光晕。
+ */
+.wf-lamp-running {
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--wf-warning) 20%, transparent),
+    0 0 0 3px transparent;
+  animation: wf-beat var(--wf-beat) infinite;
+}
+
+@keyframes wf-beat {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--wf-warning) 20%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--wf-warning) 35%, transparent);
+  }
+  12% {
+    transform: scale(1.12);
+  }
+  40% {
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--wf-warning) 20%, transparent),
+      0 0 0 8px color-mix(in oklab, var(--wf-warning) 0%, transparent);
+  }
+}
+
+/* 脊线行进段（横向）：按 data-rail-position 选渐变——离开已过灯的那截
+ * （right）从透明涨到七成，进运行灯的那截（left）从七成涨到满、一直亮进灯里，
+ * 整列穿过的 full 是平的七成。 */
+.wf-spine-march[data-rail-position="right"] {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--wf-warning) 70%, transparent)
+  );
+}
+.wf-spine-march[data-rail-position="left"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--wf-warning) 70%, transparent),
+    var(--wf-warning)
+  );
+}
+.wf-spine-march[data-rail-position="full"] {
+  background: color-mix(in oklab, var(--wf-warning) 70%, transparent);
+}
+
+.wf-ink {
+  transition:
+    stroke var(--wf-t-ink) var(--wf-ease),
+    fill var(--wf-t-ink) var(--wf-ease),
+    border-color var(--wf-t-ink) var(--wf-ease);
+}
+
+/* 行进边的光（SVG 曲线上的渐变描边）。 */
+.wf-lit {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* 站行入场：自下 4px 淡入，按站序错位。 */
+.wf-arrive {
+  animation: wf-arrive var(--wf-t-enter) var(--wf-ease) backwards;
+}
+
+@keyframes wf-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-lamp-running,
+  .wf-arrive {
+    animation: none;
+  }
+}
+
+/* 站列悬停反馈（ZCode wf-station-open 同款）：灯获得柔和光晕、站名提亮，
+ * 不做整块底色——可点击的暗示属于灯和字，不属于一块矩形背景。 */
+.station-clickable {
+  transition: background-color var(--wf-t-base) var(--wf-ease);
+}
+.station-clickable:hover .wf-lamp[data-lamp="pending"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--muted-foreground) 12%, transparent);
+}
+.station-clickable:hover .wf-lamp[data-lamp="done"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--wf-success) 20%, transparent);
+}
+.station-clickable:hover .wf-lamp[data-lamp="failed"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--wf-destructive) 20%, transparent);
+}
+.station-clickable:hover .flow-ai-tile {
+  border-color: color-mix(in oklab, var(--muted-foreground) 40%, var(--border));
+}
+.station-clickable:hover .flow-station-label {
+  color: var(--foreground);
+}

@@ -70,6 +70,12 @@ export function formatDateTime(s?: string) {
   return d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
 }
 
+/** 紧凑时间：省年份只留 MM/DD HH:mm（侧栏、流程图小字用；完整时间放悬停 title）。 */
+export function formatShortDateTime(s?: string) {
+  if (!s) return undefined
+  return formatDateTime(s).slice(5)
+}
+
 export function formatDuration(min?: number) {
   if (!min && min !== 0) return "-"
   if (min < 60) return `${min} 分钟`

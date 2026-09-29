@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { AtSign, Send, Loader2, X, Paperclip, Download } from "lucide-react"
+import { AtSign, Send, Loader2, Paperclip, Download } from "lucide-react"
 import { api } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,12 +9,8 @@ import { UserAvatar } from "@/components/user-avatar"
 import { toast } from "sonner"
 import { formatDateTime, formatFileSize } from "@/lib/labels"
 import { useAuth } from "@/store/auth"
+import { useUsers } from "@/hooks/use-users"
 import type { Comment, IssueAttachment, User } from "@/lib/types"
-
-interface PendingFile {
-  file: File
-  id: string
-}
 
 export function CommentList({
   issueId, items, onChanged,
@@ -22,18 +18,14 @@ export function CommentList({
   issueId: number; items: Comment[]; onChanged: () => void
 }) {
   const { user } = useAuth()
-  const [users, setUsers] = useState<User[]>([])
+  const users = useUsers()
   const [content, setContent] = useState("")
   const [saving, setSaving] = useState(false)
-  const [mentionOpen, setMentionOpen] = useState(false)
-  const [mentioned, setMentioned] = useState<Set<number>>(new Set())
-  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([])
+  // @ 联想态：textarea 里最后一个未完结的 "@查询词"（start = @ 的下标）
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
   const [attachments, setAttachments] = useState<IssueAttachment[]>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    api.get<User[]>("/config/users").then(setUsers).catch(() => {})
-  }, [])
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     api.get<IssueAttachment[]>(`/issues/${issueId}/attachments`)
@@ -45,6 +37,17 @@ export function CommentList({
   const authorColor = (id: number) => users.find((u) => u.id === id)?.avatarColor
 
   const mentionable = useMemo(() => users.filter((u) => u.id !== user?.id), [users, user?.id])
+  const mentionCandidates = useMemo(() => {
+    if (!mention) return []
+    const q = mention.query.toLowerCase()
+    return mentionable
+      .filter((u) =>
+        q === "" ||
+        u.displayName.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q),
+      )
+      .slice(0, 6)
+  }, [mention, mentionable])
   const commentsBySource = useMemo(() => {
     const map = new Map<number, IssueAttachment[]>()
     for (const attachment of attachments) {
@@ -56,49 +59,61 @@ export function CommentList({
     return map
   }, [attachments])
 
-  const toggleMention = (u: User) => {
-    setMentioned((current) => {
-      const next = new Set(current)
-      if (next.has(u.id)) {
-        next.delete(u.id)
-      } else {
-        next.add(u.id)
-        setContent((value) => `${value}@${u.displayName} `.trimStart())
-      }
-      return next
+  // 光标前的文本是否落在 "@查询词" 里：@ 需在行首或空白后（避免误伤邮箱）。
+  const detectMention = (text: string, caret: number) => {
+    const upto = text.slice(0, caret)
+    const match = upto.match(/(^|\s)@([^\s@]*)$/)
+    if (!match) return null
+    return { start: caret - match[2].length - 1, query: match[2] }
+  }
+
+  const syncMention = (text: string, caret: number) => {
+    setMention(detectMention(text, caret))
+    setMentionIndex(0)
+  }
+
+  const selectMention = (u: User) => {
+    if (!mention) return
+    const el = textareaRef.current
+    const caret = el ? el.selectionStart ?? mention.start + 1 : mention.start + 1
+    const next = content.slice(0, mention.start) + `@${u.displayName} ` + content.slice(caret)
+    setContent(next)
+    setMention(null)
+    requestAnimationFrame(() => {
+      el?.focus()
+      const pos = mention.start + u.displayName.length + 2
+      el?.setSelectionRange(pos, pos)
     })
   }
 
-  const pickFiles = (files: FileList | null) => {
-    if (!files) return
-    const next = Array.from(files).map((file) => ({ file, id: `${file.name}-${file.size}-${Date.now()}` }))
-    setPendingFiles((current) => [...current, ...next])
-    if (fileInputRef.current) fileInputRef.current.value = ""
+  // @ 按钮：在光标处补一个 "@"，让联想浮层接手。
+  const insertMentionAt = () => {
+    const el = textareaRef.current
+    const caret = el?.selectionStart ?? content.length
+    const next = content.slice(0, caret) + "@" + content.slice(caret)
+    setContent(next)
+    setMention({ start: caret, query: "" })
+    setMentionIndex(0)
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(caret + 1, caret + 1)
+    })
   }
 
-  const removePending = (id: string) => setPendingFiles((current) => current.filter((p) => p.id !== id))
 
   const submit = async () => {
-    if (!content.trim() && pendingFiles.length === 0) return
+    if (!content.trim()) return
     setSaving(true)
     try {
-      const created = await api.post<Comment>(`/issues/${issueId}/comments`, {
+      const mentionIds = users
+        .filter((u) => content.includes(`@${u.displayName}`))
+        .map((u) => u.id)
+      await api.post<Comment>(`/issues/${issueId}/comments`, {
         content,
-        mentionIds: mentioned.size > 0 ? Array.from(mentioned) : undefined,
+        mentionIds: mentionIds.length > 0 ? mentionIds : undefined,
       })
-      if (pendingFiles.length > 0) {
-        for (const pending of pendingFiles) {
-          const form = new FormData()
-          form.append("file", pending.file)
-          form.append("sourceType", "COMMENT")
-          form.append("sourceId", String(created.id))
-          await api.post<IssueAttachment>(`/issues/${issueId}/attachments`, form)
-        }
-      }
       setContent("")
-      setMentioned(new Set())
-      setMentionOpen(false)
-      setPendingFiles([])
+      setMention(null)
       onChanged()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "操作失败")
@@ -162,82 +177,81 @@ export function CommentList({
 
         {/* 输入框 */}
         <div className="border-t border-border p-3">
-          {mentioned.size > 0 && (
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {users.filter((u) => mentioned.has(u.id)).map((u) => (
-                <Badge key={u.id} variant="secondary" className="gap-1">
-                  <UserAvatar name={u.displayName} color={u.avatarColor} className="size-4 text-[9px]" />
-                  @{u.displayName}
-                  <button className="rounded-full hover:text-destructive" onClick={() => toggleMention(u)} aria-label={`移除 ${u.displayName}`}>
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              ))}
+          {/* 侧栏窄容器：头像+输入一行，操作按钮横向排在输入框下方，避免竖排按钮把高度撑爆 */}
+          <div className="space-y-1.5">
+            <div className="flex items-start gap-2">
+              <UserAvatar name={user?.displayName} color={user?.avatarColor} className="size-7 shrink-0" />
+              <div className="relative flex-1">
+                <Textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => {
+                    setContent(e.target.value)
+                    syncMention(e.target.value, e.target.selectionStart ?? e.target.value.length)
+                  }}
+                  placeholder="发表评论或补充信息…，@ 唤起提及"
+                  rows={2}
+                  className="min-h-[40px]"
+                  onKeyDown={(e) => {
+                    if (mention && mentionCandidates.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault()
+                        setMentionIndex((i) => (i + 1) % mentionCandidates.length)
+                        return
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault()
+                        setMentionIndex((i) => (i - 1 + mentionCandidates.length) % mentionCandidates.length)
+                        return
+                      }
+                      if (e.key === "Enter" || e.key === "Tab") {
+                        e.preventDefault()
+                        selectMention(mentionCandidates[mentionIndex]!)
+                        return
+                      }
+                      if (e.key === "Escape") {
+                        setMention(null)
+                        return
+                      }
+                    }
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit()
+                  }}
+                />
+                {mention && (
+                  <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-40 overflow-y-auto rounded-lg border border-border bg-background p-1 shadow-md">
+                    {mentionCandidates.length === 0 ? (
+                      <p className="px-2 py-1.5 text-xs text-muted-foreground">无匹配用户</p>
+                    ) : (
+                      mentionCandidates.map((u, i) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); selectMention(u) }}
+                          onMouseEnter={() => setMentionIndex(i)}
+                          className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
+                            i === mentionIndex ? "bg-accent" : "hover:bg-accent/60"
+                          }`}
+                        >
+                          <UserAvatar name={u.displayName} color={u.avatarColor} className="size-5 text-[10px]" />
+                          <span>{u.displayName}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {ROLE_LABEL[u.role] ?? u.role}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-          {pendingFiles.length > 0 && (
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {pendingFiles.map((pending) => (
-                <Badge key={pending.id} variant="secondary" className="gap-1">
-                  <Paperclip className="size-3" />
-                  <span className="max-w-[160px] truncate">{pending.file.name}</span>
-                  <span className="text-muted-foreground">({formatFileSize(pending.file.size)})</span>
-                  <button className="rounded-full hover:text-destructive" onClick={() => removePending(pending.id)} aria-label="移除文件">
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-          {mentionOpen && (
-            <div className="mb-2 max-h-40 overflow-y-auto rounded-lg border border-border bg-background p-2">
-              {mentionable.length === 0 ? (
-                <p className="px-2 py-1 text-xs text-muted-foreground">暂无可提及的用户</p>
-              ) : (
-                mentionable.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => toggleMention(u)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${
-                      mentioned.has(u.id) ? "bg-accent/60" : ""
-                    }`}
-                  >
-                    <UserAvatar name={u.displayName} color={u.avatarColor} className="size-5 text-[10px]" />
-                    <span>{u.displayName}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{u.role === "LEADER" ? "负责人" : "开发"}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-          <div className="flex items-end gap-2">
-            <UserAvatar name={user?.displayName} color={user?.avatarColor} />
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="发表评论或补充信息…"
-              rows={2}
-              className="min-h-[40px]"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit()
-              }}
-            />
-            <div className="flex flex-col gap-2">
-              <Button size="icon" variant="outline" onClick={() => fileInputRef.current?.click()} title="附带附件">
-                <Paperclip className="size-4" />
+            <div className="flex items-center gap-1 pl-9">
+              <Button size="icon" variant="ghost" className="size-7" onClick={insertMentionAt} title="插入 @ 提及">
+                <AtSign className="size-3.5" />
               </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => pickFiles(e.target.files)}
-              />
-              <Button size="icon" variant={mentionOpen ? "secondary" : "outline"} onClick={() => setMentionOpen((v) => !v)} title="提及人员">
-                <AtSign className="size-4" />
-              </Button>
-              <Button size="icon" onClick={submit} disabled={saving || (!content.trim() && pendingFiles.length === 0)}>
-                {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              <span className="ml-auto hidden text-[10px] text-muted-foreground sm:inline">⌘/Ctrl+Enter 发送</span>
+              <Button size="sm" className="h-7 px-2.5" onClick={submit} disabled={saving || !content.trim()}>
+                {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                发送
               </Button>
             </div>
           </div>
@@ -245,6 +259,10 @@ export function CommentList({
       </CardContent>
     </Card>
   )
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  ADMIN: "管理员", LEADER: "负责人", DEVELOPER: "开发", SUBMITTER: "提出人",
 }
 
 /** 渲染评论内容，并把被 @ 提及人员的名字高亮。 */
